@@ -1,6 +1,4 @@
 simulation:
   bot_count: 2
-  sim_steps: 300
   robot:
-    comms:
-      wireless_range_grid_scale: 7
+    map_resolution: low
