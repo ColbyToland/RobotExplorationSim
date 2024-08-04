@@ -25,6 +25,7 @@ simulation:
       birth_limit: 5
       steps: 5
   robot:
+    map_resolution: high
     sensor:
       count: 4
       beam_grid_scale: 2
@@ -32,7 +33,6 @@ simulation:
     comms:
       wireless_range_grid_scale: 10
       update_period: 1
-    resolution: high
     name_generator:
       - - Red
         - Green

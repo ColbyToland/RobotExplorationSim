@@ -8,12 +8,10 @@ import math
 import random
 import numpy as np
 
+from ExplorerConfig import ExplorerConfig
 from LaserRangeFinder import LaserRangeFinder, Measurement
 from OccupancyGrid import GridResolution, OccupancyGrid
 
-
-SENSOR_COUNT = 8
-MAP_RESOLUTION = GridResolution.PARITY
 
 assigned_robot_names = []
 
@@ -37,18 +35,18 @@ class Robot(arcade.Sprite):
         self.path = []
 
         # sensors
-        self.laser_half_width = self.grid_size / 2 + 1
+        robot_sensor_settings = ExplorerConfig().robot_sensor_settings()
+        self.laser_half_width = robot_sensor_settings['beam_grid_scale']*self.grid_size / 2 + 1
         self.range_finders = []
-        max_range = 5*self.grid_size # Limited view
-        #max_range=1.1*max([max_x, max_y]) # Unlimited view
-        for i in range(SENSOR_COUNT): # replicate v3 setup
+        max_range = robot_sensor_settings['range_grid_scale']*self.grid_size
+        for i in range(robot_sensor_settings['count']):
             self.range_finders.append(LaserRangeFinder(self, 
                                                        self.laser_half_width, 
                                                        max_range=max_range,
-                                                       orientation=i*2*math.pi/SENSOR_COUNT))
+                                                       orientation=i*2*math.pi/robot_sensor_settings['count']))
 
         # map
-        self.map = OccupancyGrid(self.max_x, self.max_y, self.grid_size, MAP_RESOLUTION)
+        self.map = OccupancyGrid(self.max_x, self.max_y, self.grid_size, ExplorerConfig().robot_map_resolution())
         self.partner_maps = {}
 
         # comms
@@ -58,23 +56,14 @@ class Robot(arcade.Sprite):
         self.comm_partners = []
 
     def gen_name(self):
-        colors = ["Red",
-                  "Green",
-                  "Blue",
-                  "Black",
-                  "White",
-                  "Gold",
-                  "Silver"]
-        animals = ["Wolf",
-                   "Dragon",
-                   "Falcon",
-                   "Viper",
-                   "Shark",
-                   "Hornet"]
-
         global assigned_robot_names
+        name_parts = ExplorerConfig().robot_name_gen_parameters()
         while not self.name:
-            candidate = random.choice(colors) + " " + random.choice(animals)
+            candidate = ""
+            for name_part_list in name_parts:
+                if candidate != "":
+                    candidate += " "
+                candidate += random.choice(name_part_list)
             if candidate not in assigned_robot_names:
                 self.name = candidate
                 assigned_robot_names.append(self.name)

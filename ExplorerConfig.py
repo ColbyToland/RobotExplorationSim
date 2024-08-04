@@ -1,6 +1,9 @@
 from copy import deepcopy
 import yaml
 
+from OccupancyGrid import GridResolution
+
+
 DefaultExplorerConfig = {
     'window': {
         'width': 800,
@@ -34,6 +37,7 @@ DefaultExplorerConfig = {
                 }
             },
         'robot': {
+            'map_resolution': 'parity',
             'sensor': {
                 'count': 8,
                 'beam_grid_scale': 1,
@@ -42,7 +46,6 @@ DefaultExplorerConfig = {
             'comms': {
                 'wireless_range_grid_scale': 5,
                 'update_period': 10,
-                'resolution': 'parity'
                 },
             'name_generator': [
                     [
@@ -130,6 +133,19 @@ class ExplorerConfig:
             params = deepcopy(DefaultExplorerConfig['simulation']['map_generator'])
         return params
 
+    def robot_map_resolution(self):
+        rez_name = DefaultExplorerConfig['simulation']['robot']['map_resolution']
+        if self._is_valid_key_chain(hdd_config_file, ['simulation', 'robot', 'map_resolution']):
+            rez_name =  hdd_config_file['simulation']['robot']['map_resolution']
+        rez_name = rez_name.casefold().strip()
+        if rez_name == 'parity':
+            return GridResolution.PARITY
+        elif rez_name == 'low':
+            return GridResolution.LOW
+        elif rez_name == 'high':
+            return GridResolution.HIGH
+        raise ValueError(f"Invalid resolution type: {rez_name}")
+
     def robot_sensor_settings(self):
         if self._is_valid_key_chain(hdd_config_file, ['simulation', 'robot']):
             params = self._generic_simple_params('sensor', DefaultExplorerConfig['simulation']['robot'], hdd_config_file['simulation']['robot'])
@@ -165,6 +181,8 @@ if __name__ == "__main__":
     print(default.sim_steps())
     print("map_generator_settings:")
     print(default.map_generator_settings())
+    print("robot_map_resolution:")
+    print(default.robot_map_resolution())
     print("robot_sensor_settings:")
     print(default.robot_sensor_settings())
     print("robot_comm_settings:")
@@ -188,6 +206,8 @@ if __name__ == "__main__":
     print(default.sim_steps())
     print("map_generator_settings:")
     print(default.map_generator_settings())
+    print("robot_map_resolution:")
+    print(default.robot_map_resolution())
     print("robot_sensor_settings:")
     print(default.robot_sensor_settings())
     print("robot_comm_settings:")
@@ -218,6 +238,8 @@ if __name__ == "__main__":
     print(default.sim_steps())
     print("map_generator_settings:")
     print(default.map_generator_settings())
+    print("robot_map_resolution:")
+    print(default.robot_map_resolution())
     print("robot_sensor_settings:")
     print(default.robot_sensor_settings())
     print("robot_comm_settings:")

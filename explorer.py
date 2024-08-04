@@ -4,16 +4,13 @@ Heavily based on the demo code. This has a procedurally generated map that is ra
 
 import arcade
 
+from ExplorerConfig import ExplorerConfig
 from MainMenuView import MainMenuView
-
-# How big the window is
-WINDOW_WIDTH = 800
-WINDOW_HEIGHT = 600
-WINDOW_TITLE = "Arcade Explorer"
 
 
 def main():
-    window = arcade.Window(WINDOW_WIDTH, WINDOW_HEIGHT, WINDOW_TITLE, resizable=True)
+    window_config = ExplorerConfig().window_settings()
+    window = arcade.Window(window_config['width'], window_config['height'], "Arcade Explorer" + window_config['subtitle'], resizable=True)
     start_view = MainMenuView()
     window.show_view(start_view)
     arcade.run()

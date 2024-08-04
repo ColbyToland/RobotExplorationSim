@@ -13,6 +13,7 @@ python -m arcade.examples.procedural_caves_cellular
 """
 
 import arcade
+
 from GameView import GameView
 
 

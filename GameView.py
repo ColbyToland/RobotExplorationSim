@@ -20,38 +20,17 @@ import os
 from pyglet.math import Vec2
 import sys
 
+from ExplorerConfig import ExplorerConfig
 import MapMaker
 from Robot import Robot
 
-# Sprite scaling. Make this larger, like 0.5 to zoom in and add
-# 'mystery' to what you can see. Make it smaller, like 0.1 to see
-# more of the map.
-SPRITE_SCALING = 0.125
-SPRITE_SIZE = 128 * SPRITE_SCALING
-
-# How close the player can get to the edge before we scroll.
-VIEWPORT_MARGIN = 300
-
-# How fast the camera pans to the player. 1.0 is instant.
-CAMERA_SPEED = 0.1
-FOCUS_TIMER = 200
-
-BOT_COUNT = 3
-END_STEPS = 1000
-
-DRAW_TRAJECTORY = True
-DRAW_SENSORS = True
-DRAW_COMMS = True
 
 class GameView(arcade.View):
-    """
-    Main application class.
-    """
-
     def __init__(self):
         super().__init__()
 
         self.grid = None
+        self.grid_size = None
         self.wall_list = None
         self.robot_list = None
         self.draw_time = 0
@@ -80,16 +59,20 @@ class GameView(arcade.View):
         self.robot_list = arcade.SpriteList(use_spatial_hash=True)
 
         # Create cave system using a 2D grid
-        self.grid, self.wall_list = MapMaker.generate_map(SPRITE_SIZE, SPRITE_SCALING)
-        self.max_x = int(MapMaker.GRID_WIDTH * SPRITE_SIZE)
-        self.max_y = int(MapMaker.GRID_HEIGHT * SPRITE_SIZE)
+        drawing_settings = ExplorerConfig().drawing_settings()
+        self.grid_size = drawing_settings['scale']*drawing_settings['size']
+        self.grid, self.wall_list = MapMaker.generate_map(self.grid_size, drawing_settings['scale'])
+        map_generator_settings = ExplorerConfig().map_generator_settings()
+        self.max_x = int(map_generator_settings['grid_width'] * self.grid_size)
+        self.max_y = int(map_generator_settings['grid_height'] * self.grid_size)
 
         # Set up the player
+        robot_comm_settings = ExplorerConfig().robot_comm_settings()
         self.bot_paths = []
-        for i in range(BOT_COUNT):
+        for i in range(ExplorerConfig().bot_count()):
             self.bot_paths.append([])
-            robot_sprite = Robot(SPRITE_SCALING, self.wall_list, self.max_x, self.max_y)
-            robot_sprite.enable_comms(wireless_range=5*SPRITE_SIZE, update_period=10)
+            robot_sprite = Robot(drawing_settings['scale'], self.wall_list, self.max_x, self.max_y)
+            robot_sprite.enable_comms(wireless_range=robot_comm_settings['wireless_range_grid_scale']*self.grid_size, update_period=robot_comm_settings['update_period'])
             self.robot_list.append(robot_sprite)
 
         # need a a completed robot list before setting up the engines
@@ -139,12 +122,13 @@ class GameView(arcade.View):
         # Draw the sprites
         self.wall_list.draw()
         self.robot_list.draw()
+        drawing_settings = ExplorerConfig().drawing_settings()
         for robot_sprite in self.robot_list:
-            if DRAW_TRAJECTORY and robot_sprite.path != []:
+            if drawing_settings['draw_trajectory'] and robot_sprite.path != []:
                 arcade.draw_line_strip(robot_sprite.path, arcade.color.BLUE, 2)
-            if DRAW_SENSORS:
+            if drawing_settings['draw_sensors']:
                 robot_sprite.draw_sensors()
-            if DRAW_COMMS:
+            if drawing_settings['draw_comms']:
                 robot_sprite.draw_comms()
 
         # Select the (unscrolled) camera for our GUI
@@ -161,7 +145,7 @@ class GameView(arcade.View):
 
         self.draw_time = timeit.default_timer() - draw_start_time
 
-    def scroll_to_robot(self, speed=CAMERA_SPEED):
+    def scroll_to_robot(self, speed):
         """
         Scroll the window to the player.
 
@@ -172,9 +156,9 @@ class GameView(arcade.View):
 
         # rotate focus on the bots
         self.bot_focus_timer += 1
-        if self.bot_focus_timer >= FOCUS_TIMER:
+        if self.bot_focus_timer >= ExplorerConfig().camera_settings()['focus_timer']:
             self.current_bot += 1
-            if self.current_bot >= BOT_COUNT:
+            if self.current_bot >= len(self.robot_list):
                 self.current_bot = 0
             self.bot_focus_timer = 0
 
@@ -215,7 +199,7 @@ class GameView(arcade.View):
         """ Movement and game logic """
 
         self.timer_steps += 1
-        if self.timer_steps > END_STEPS:
+        if self.timer_steps > ExplorerConfig().sim_steps():
             self.save_results()
             sys.exit()
 
@@ -234,7 +218,7 @@ class GameView(arcade.View):
             robot_sprite.sensor_update([self.wall_list, self.robot_list])
 
         # Scroll the screen to the player
-        self.scroll_to_robot()
+        self.scroll_to_robot(ExplorerConfig().camera_settings()['speed'])
 
         # Save the time it took to do this.
         self.processing_time = timeit.default_timer() - start_time

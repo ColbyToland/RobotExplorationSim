@@ -15,16 +15,7 @@ python -m arcade.examples.procedural_caves_cellular
 import random
 import arcade
 
-# How big the grid is
-GRID_WIDTH = 40
-GRID_HEIGHT = 40
-GRID_SEED = None
-
-# Parameters for cellular automata
-CHANCE_TO_START_ALIVE = 0.4
-DEATH_LIMIT = 4
-BIRTH_LIMIT = 4
-NUMBER_OF_STEPS = 4
+from ExplorerConfig import ExplorerConfig
 
 
 def create_grid(width, height):
@@ -40,7 +31,7 @@ def initialize_grid(grid, seed = None):
         random.seed(seed)
     for row in range(height):
         for column in range(width):
-            if random.random() <= CHANCE_TO_START_ALIVE:
+            if random.random() <= ExplorerConfig().map_generator_settings()['cellular']['start_alive_chance']:
                 grid[row][column] = 1
 
 
@@ -68,16 +59,17 @@ def do_simulation_step(old_grid):
     height = len(old_grid)
     width = len(old_grid[0])
     new_grid = create_grid(width, height)
+    cellular_settings = ExplorerConfig().map_generator_settings()['cellular']
     for x in range(width):
         for y in range(height):
             alive_neighbors = count_alive_neighbors(old_grid, x, y)
             if old_grid[y][x] == 1:
-                if alive_neighbors < DEATH_LIMIT:
+                if alive_neighbors < cellular_settings['death_limit']:
                     new_grid[y][x] = 0
                 else:
                     new_grid[y][x] = 1
             else:
-                if alive_neighbors > BIRTH_LIMIT:
+                if alive_neighbors > cellular_settings['birth_limit']:
                     new_grid[y][x] = 1
                 else:
                     new_grid[y][x] = 0
@@ -85,16 +77,17 @@ def do_simulation_step(old_grid):
 
 def generate_map(sprite_size, sprite_scale):
     # Create cave system using a 2D grid
-    grid = create_grid(GRID_WIDTH, GRID_HEIGHT)
+    map_generator_settings = ExplorerConfig().map_generator_settings()
+    grid = create_grid(map_generator_settings['grid_width'], map_generator_settings['grid_height'])
     initialize_grid(grid)
-    for step in range(NUMBER_OF_STEPS):
+    for step in range(map_generator_settings['cellular']['steps']):
         grid = do_simulation_step(grid)
 
     # Create sprites based on 2D grid
     # Each grid location is a sprite.
     wall_list = arcade.SpriteList(use_spatial_hash=True)
-    for row in range(GRID_HEIGHT):
-        for column in range(GRID_WIDTH):
+    for row in range(map_generator_settings['grid_height']):
+        for column in range(map_generator_settings['grid_width']):
             if grid[row][column] == 1:
                 wall = arcade.Sprite(":resources:images/tiles/grassCenter.png", sprite_scale)
                 wall.center_x = column * sprite_size + sprite_size / 2
