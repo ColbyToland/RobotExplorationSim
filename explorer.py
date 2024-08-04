@@ -4,12 +4,12 @@ Heavily based on the demo code. This has a procedurally generated map that is ra
 
 import arcade
 
-from MainMenu import MainMenuView
+from MainMenuView import MainMenuView
 
 # How big the window is
 WINDOW_WIDTH = 800
 WINDOW_HEIGHT = 600
-WINDOW_TITLE = "Procedural Caves Cellular Automata Example"
+WINDOW_TITLE = "Arcade Explorer"
 
 
 def main():

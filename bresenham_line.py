@@ -1,11 +1,6 @@
 # Downloaded from https://github.com/Azrood/python-bresenham
 # This code was unlicensed at the time of copying (Aug 2, 2024)
 
-import numpy as np
-import os
-
-from PIL import Image as img
-
 def get_line(start, end):
     """Bresenham's Line Algorithm
     Produces a list of tuples from start and end

@@ -1,0 +1,45 @@
+window:
+  width: 800
+  height: 600
+  subtitle: ""
+drawing:
+  scale: 0.125
+  size: 128
+  draw_trajectory: true
+  draw_sensors: true
+  draw_comms: true
+camera:
+  viewport_margin: 300
+  speed: 0.1
+  focus_timer: 200
+simulation:
+  bot_count: 3
+  sim_steps: 1000
+  map:
+    grid_width: 40
+    grid_height: 40
+    grid_seed: null
+    cellular:
+      start_alive_chance: 0.4
+      death_limit: 4
+      birth_limit: 4
+      steps: 4
+  robot:
+    sensors: 8
+    resolution: parity
+    name_generator:
+      1:
+        - Red
+        - Green
+        - Blue
+        - Black
+        - White
+        - Gold
+        - Silver
+      2:
+        - Wolf
+        - Dragon
+        - Falcon
+        - Viper
+        - Shark
+        - Hornet
