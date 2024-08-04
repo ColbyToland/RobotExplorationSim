@@ -1,45 +1,43 @@
 window:
-  width: 800
-  height: 600
-  subtitle: ""
+  width: 1000
+  height: 1000
+  subtitle: "Base"
 drawing:
-  scale: 0.125
-  size: 128
-  draw_trajectory: true
-  draw_sensors: true
-  draw_comms: true
+  scale: 0.25
+  size: 256
+  draw_trajectory: false
+  draw_sensors: false
+  draw_comms: false
 camera:
-  viewport_margin: 300
-  speed: 0.1
-  focus_timer: 200
+  viewport_margin: 400
+  speed: 0.2
+  focus_timer: 100
 simulation:
-  bot_count: 3
-  sim_steps: 1000
-  map:
-    grid_width: 40
-    grid_height: 40
-    grid_seed: null
+  bot_count: 1
+  sim_steps: 200
+  map_generator:
+    grid_width: 30
+    grid_height: 30
+    grid_seed: 12345
     cellular:
-      start_alive_chance: 0.4
-      death_limit: 4
-      birth_limit: 4
-      steps: 4
+      start_alive_chance: 0.5
+      death_limit: 5
+      birth_limit: 5
+      steps: 5
   robot:
-    sensors: 8
-    resolution: parity
+    sensor:
+      count: 4
+      beam_grid_scale: 2
+      range_grid_scale: 10
+    comms:
+      wireless_range_grid_scale: 10
+      update_period: 1
+    resolution: high
     name_generator:
-      1:
-        - Red
+      - - Red
         - Green
         - Blue
-        - Black
-        - White
-        - Gold
-        - Silver
-      2:
-        - Wolf
+      - - Wolf
         - Dragon
-        - Falcon
-        - Viper
-        - Shark
-        - Hornet
+      - - Fang
+        - Claw

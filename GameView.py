@@ -59,12 +59,6 @@ class GameView(arcade.View):
         self.physics_engines = []
         self.timer_steps = 0
 
-        # Track the current state of what key is pressed
-        self.left_pressed = False
-        self.right_pressed = False
-        self.up_pressed = False
-        self.down_pressed = False
-
         # Create the cameras. One for the GUI, one for the sprites.
         # We scroll the 'sprite world' but not the GUI.
         self.camera_sprites = arcade.Camera(self.window.width, self.window.height)
@@ -95,7 +89,7 @@ class GameView(arcade.View):
         for i in range(BOT_COUNT):
             self.bot_paths.append([])
             robot_sprite = Robot(SPRITE_SCALING, self.wall_list, self.max_x, self.max_y)
-            robot_sprite.enable_comms(wireless_range=5*SPRITE_SIZE, frequency=10)
+            robot_sprite.enable_comms(wireless_range=5*SPRITE_SIZE, update_period=10)
             self.robot_list.append(robot_sprite)
 
         # need a a completed robot list before setting up the engines

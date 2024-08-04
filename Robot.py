@@ -53,8 +53,8 @@ class Robot(arcade.Sprite):
 
         # comms
         self.comm_enabled = False
-        self.comm_range = 0
-        self.comm_frequency = 0
+        self.comm_range = math.inf
+        self.comm_update_period = 1
         self.comm_partners = []
 
     def gen_name(self):
@@ -72,23 +72,24 @@ class Robot(arcade.Sprite):
                    "Shark",
                    "Hornet"]
 
+        global assigned_robot_names
         while not self.name:
             candidate = random.choice(colors) + " " + random.choice(animals)
             if candidate not in assigned_robot_names:
                 self.name = candidate
                 assigned_robot_names.append(self.name)
 
-    def enable_comms(self, wireless_range=math.inf, frequency=1):
+    def enable_comms(self, wireless_range=math.inf, update_period=1):
         self.comm_enabled = True
         self.comm_range = wireless_range
-        self.comm_frequency = frequency
+        self.comm_update_period = update_period
 
     def add_comm_subscriber(self, bot):
         if not bot in self.comm_partners:
             self.comm_partners.append(bot)
 
     def _comm_ready(self):
-        return self.comm_enabled and self.timer_steps % self.comm_frequency == 0
+        return self.comm_enabled and self.timer_steps % self.comm_update_period == 0
 
     def update_comm_partners(self):
         if not self._comm_ready():
