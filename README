@@ -1,9 +1,0 @@
-Versions
-1 - Robot randomly traversing a randomly generated map with A*
-2 - Multiple robots
-3 - Simulated cardinal direction laser range finders
-4 - Simulated laser range finders in arbitrary orientations
-5 - Store sensor data as Occupancy Grid
-6 - Occupancy Grid sharing
-7 - *In Progress* Coordinated exploration
-8 - *Planned* Clean-up code, add config file based simulation values, seed setting option
