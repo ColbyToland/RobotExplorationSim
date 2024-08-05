@@ -89,89 +89,70 @@ DefaultExplorerConfig = {
 
 hdd_config_file = None
 
+def copy_override_dict(main_dict, override_dict):
+    """ Recursive copying of override values from one dict to another """
+    if override_dict is None:
+        return
+    for key, value in override_dict.items():
+        if key in main_dict:
+            if isinstance(value, dict):
+                copy_override_dict(main_dict[key], override_dict[key])
+            else:
+                main_dict[key] = override_dict[key]
+
+def is_valid_key_chain(config, key_chain):
+    if config is None:
+        return False
+    subconfig = deepcopy(config)
+    for key in key_chain:
+        if key in subconfig:
+            subconfig = subconfig[key]
+        else:
+            return False
+    return True
+
 class ExplorerConfig:
     def __init__(self, fname=None):
+        global hdd_config_file
+        if hdd_config_file is None:
+            hdd_config_file = deepcopy(DefaultExplorerConfig)
         if not fname is None:
             with open(fname, 'r') as file:
-                global hdd_config_file
-                hdd_config_file = yaml.safe_load(file)
-
-    def _generic_simple_params(self, key, defaultconfig, config, excluded_keys=[]):
-        if not key in defaultconfig:
-            raise ValueError(f"\'{key}\' is not a valid config file key")
-        params = deepcopy(defaultconfig[key])
-        if not config is None and key in config:
-            subconfig = config[key]
-            for subkey, value in params.items():
-                if subkey in excluded_keys:
-                    continue
-                if subkey in subconfig:
-                    params[subkey] = subconfig[subkey]
-        return params
-
-    def _simple_params(self, key):
-        return self._generic_simple_params(key, DefaultExplorerConfig, hdd_config_file)
+                override_config = yaml.safe_load(file)
+                if is_valid_key_chain(override_config, ['simulation', 'map_generator', 'grid_seed']) and override_config['simulation']['map_generator']['grid_seed']:
+                    # If there is a random seed in the config file then default async_physics off
+                    hdd_config_file['simulation']['async_physics'] = False
+                copy_override_dict(hdd_config_file, override_config)
 
     def window_settings(self):
-        return self._simple_params('window')
+        return hdd_config_file['window']
 
     def drawing_settings(self):
-        return self._simple_params('drawing')
+        return hdd_config_file['drawing']
  
     def camera_settings(self):
-        return self._simple_params('camera')
-
-    def _is_valid_key_chain(self, config, key_chain):
-        if config is None:
-            return False
-        subconfig = deepcopy(config)
-        for key in key_chain:
-            if key in subconfig:
-                subconfig = subconfig[key]
-            else:
-                return False
-        return True
+        return hdd_config_file['camera']
 
     def bot_count(self):
-        if self._is_valid_key_chain(hdd_config_file, ['simulation', 'bot_count']):
-            return hdd_config_file['simulation']['bot_count']
-        return DefaultExplorerConfig['simulation']['bot_count']
+        return hdd_config_file['simulation']['bot_count']
 
     def sim_steps(self):
-        if self._is_valid_key_chain(hdd_config_file, ['simulation', 'sim_steps']):
-            return hdd_config_file['simulation']['sim_steps']
-        return DefaultExplorerConfig['simulation']['sim_steps']
+        return hdd_config_file['simulation']['sim_steps']
 
     def async_params(self):
-        async_params = {'use_async': DefaultExplorerConfig['simulation']['use_async'], 
-                        'async_physics': DefaultExplorerConfig['simulation']['async_physics']}
-        if self._is_valid_key_chain(hdd_config_file, ['simulation', 'map_generator', 'grid_seed']) and hdd_config_file['simulation']['map_generator']['grid_seed']:
-            # If there is a random seed in the config file then default async_physics off
-            async_params['async_physics'] = False
-        if self._is_valid_key_chain(hdd_config_file, ['simulation', 'use_async']):
-            async_params['use_async'] = hdd_config_file['simulation']['use_async']
-        if self._is_valid_key_chain(hdd_config_file, ['simulation', 'async_physics']):
-            async_params['async_physics'] = hdd_config_file['simulation']['async_physics']
-        return async_params
+        return {'use_async': hdd_config_file['simulation']['use_async'], 
+                'async_physics': hdd_config_file['simulation']['async_physics']}
 
     def map_generator_settings(self):
-        if self._is_valid_key_chain(hdd_config_file, ['simulation']):
-            params = self._generic_simple_params('map_generator', DefaultExplorerConfig['simulation'], hdd_config_file['simulation'], ['cellular'])
-            params['cellular'] = self._generic_simple_params('cellular', DefaultExplorerConfig['simulation']['map_generator'], hdd_config_file['simulation'])
-        else:
-            params = deepcopy(DefaultExplorerConfig['simulation']['map_generator'])
+        params = deepcopy(hdd_config_file['simulation']['map_generator'])
         if params['grid_seed'] is None:
             # Set a random seed to the random library and store it so we can reproduce this run in the future
-            DefaultExplorerConfig['simulation']['map_generator']['grid_seed'] = random.randrange(sys.maxsize)
-            params['grid_seed'] = DefaultExplorerConfig['simulation']['map_generator']['grid_seed']
-
+            hdd_config_file['simulation']['map_generator']['grid_seed'] = random.randrange(sys.maxsize)
+            params['grid_seed'] = hdd_config_file['simulation']['map_generator']['grid_seed']
         return params
 
     def robot_map_resolution(self):
-        rez_name = DefaultExplorerConfig['simulation']['robot']['map_resolution']
-        if self._is_valid_key_chain(hdd_config_file, ['simulation', 'robot', 'map_resolution']):
-            rez_name =  hdd_config_file['simulation']['robot']['map_resolution']
-        rez_name = rez_name.casefold().strip()
+        rez_name =  hdd_config_file['simulation']['robot']['map_resolution'].casefold().strip()
         if rez_name == 'parity':
             return GridResolution.PARITY
         elif rez_name == 'low':
@@ -181,40 +162,20 @@ class ExplorerConfig:
         raise ValueError(f"Invalid resolution type: {rez_name}")
 
     def robot_sensor_settings(self):
-        if self._is_valid_key_chain(hdd_config_file, ['simulation', 'robot']):
-            params = self._generic_simple_params('sensor', DefaultExplorerConfig['simulation']['robot'], hdd_config_file['simulation']['robot'])
-        else:
-            params = deepcopy(DefaultExplorerConfig['simulation']['robot']['sensor'])
-        return params
+        return deepcopy(hdd_config_file['simulation']['robot']['sensor'])
 
     def robot_comm_settings(self):
-        if self._is_valid_key_chain(hdd_config_file, ['simulation', 'robot']):
-            params = self._generic_simple_params('comms', DefaultExplorerConfig['simulation']['robot'], hdd_config_file['simulation']['robot'])
-        else:
-            params = deepcopy(DefaultExplorerConfig['simulation']['robot']['comms'])
-        return params
+        return deepcopy(hdd_config_file['simulation']['robot']['comms'])
 
     def robot_name_gen_parameters(self):
-        if self._is_valid_key_chain(hdd_config_file, ['simulation', 'robot', 'name_generator']):
-            return hdd_config_file['simulation']['robot']['name_generator']
-        return deepcopy(DefaultExplorerConfig['simulation']['robot']['name_generator'])
-
-    def _copy_override_dict(self, main_dict, override_dict):
-        if override_dict is None:
-            return
-        for key, value in override_dict:
-            if key in main_dict:
-                if isinstance(value, dict):
-                    self._copy_override_dict(main_dict[key], override_dict[key])
-                else:
-                    main_dict[key] = override_dict[key]
+        return deepcopy(hdd_config_file['simulation']['robot']['name_generator'])
 
     def __str__(self):
-        printable_config = deepcopy(DefaultExplorerConfig)
-        self._copy_override_dict(printable_config, hdd_config_file)
-        return yaml.dump(printable_config)
+        return yaml.dump(deepcopy(hdd_config_file))
 
 if __name__ == "__main__":
+    # TODO: Convert this to a unit test in pytest!
+
     print("No file just defaults:")
     print("======================")
     default = ExplorerConfig()
@@ -263,13 +224,6 @@ if __name__ == "__main__":
     print(default.robot_comm_settings())
     print("robot_name_gen_parameters:")
     print(default.robot_name_gen_parameters())
-    print("------------------------------------")
-    print("------------------------------------")
-    try:
-        default._simple_params('invalid_key')
-    except ValueError as err:
-        print("Attempted invalid key.")
-        print("Error message:", err)
     print("------------------------------------")
     print("------------------------------------")
     print("minimal.yaml:")
