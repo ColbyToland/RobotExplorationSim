@@ -12,6 +12,8 @@ Comments to what each parameter does are in configs/base.yaml
 """
 
 from copy import deepcopy
+import random
+import sys
 import yaml
 
 from OccupancyGrid import GridResolution
@@ -158,6 +160,11 @@ class ExplorerConfig:
             params['cellular'] = self._generic_simple_params('cellular', DefaultExplorerConfig['simulation']['map_generator'], hdd_config_file['simulation'])
         else:
             params = deepcopy(DefaultExplorerConfig['simulation']['map_generator'])
+        if params['grid_seed'] is None:
+            # Set a random seed to the random library and store it so we can reproduce this run in the future
+            DefaultExplorerConfig['simulation']['map_generator']['grid_seed'] = random.randrange(sys.maxsize)
+            params['grid_seed'] = DefaultExplorerConfig['simulation']['map_generator']['grid_seed']
+
         return params
 
     def robot_map_resolution(self):
@@ -191,6 +198,21 @@ class ExplorerConfig:
         if self._is_valid_key_chain(hdd_config_file, ['simulation', 'robot', 'name_generator']):
             return hdd_config_file['simulation']['robot']['name_generator']
         return deepcopy(DefaultExplorerConfig['simulation']['robot']['name_generator'])
+
+    def _copy_override_dict(self, main_dict, override_dict):
+        if override_dict is None:
+            return
+        for key, value in override_dict:
+            if key in main_dict:
+                if isinstance(value, dict):
+                    self._copy_override_dict(main_dict[key], override_dict[key])
+                else:
+                    main_dict[key] = override_dict[key]
+
+    def __str__(self):
+        printable_config = deepcopy(DefaultExplorerConfig)
+        self._copy_override_dict(printable_config, hdd_config_file)
+        return yaml.dump(printable_config)
 
 if __name__ == "__main__":
     print("No file just defaults:")

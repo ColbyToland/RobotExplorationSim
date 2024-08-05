@@ -193,6 +193,47 @@ class GameView(arcade.View):
         self.camera_sprites.resize(int(width), int(height))
         self.camera_gui.resize(int(width), int(height))
 
+    def save_statistics(self):
+        """ Store numeric statistics for comparing simulations """
+        with open("output/statistics.txt", "w+", encoding="utf-8") as f:
+            seed = ExplorerConfig().map_generator_settings()['grid_seed']
+            f.write(f"Random Seed: {seed}\n")
+            bot_count = len(self.robot_list)
+            f.write(f"Bot Count: {bot_count}\n")
+            sprite_count = len(self.wall_list) + bot_count
+            f.write(f"Sprite Count: {sprite_count}\n")
+            steps = self.timer_steps-1
+            f.write(f"Simulation Steps: {steps}\n")
+
+            f.write("\n")
+            f.write("Note: Draw and processing times of 0 are purged.\n")
+            f.write("\n")
+
+            self.draw_times = [t for t in self.draw_times if t != 0]
+            total_draw_time = 0
+            for t in self.draw_times:
+                total_draw_time += t
+            avg_draw_time = total_draw_time / len(self.draw_times)
+            f.write(f"Average Draw Time: {avg_draw_time}\n")
+            f.write(f"Min Draw Time: {min(self.draw_times)}\n")
+            f.write(f"Max Draw Time: {max(self.draw_times)}\n")
+            f.write(f"Total Draw Time: {total_draw_time}\n")
+
+            self.processing_times = [t for t in self.processing_times if t != 0]
+            total_processing_time = 0
+            for t in self.processing_times:
+                total_processing_time += t
+            avg_processing_time = total_processing_time / len(self.processing_times)
+            f.write(f"Average Processing Time: {avg_processing_time}\n")
+            f.write(f"Min Processing Time: {min(self.processing_times)}\n")
+            f.write(f"Max Processing Time: {max(self.processing_times)}\n")
+            f.write(f"Total Processing Time: {total_processing_time}\n")
+
+            f.write("\n")
+
+            f.write(f"Draw Times: \n{self.draw_times}\n\n")
+            f.write(f"Processing Times: \n{self.processing_times}\n")
+
     def save_results(self):
         """ Store any simulation results to files and images """
         # Without this, save images when the folder doesn't exist crashes
@@ -200,7 +241,7 @@ class GameView(arcade.View):
 
         # Save each robot's map constructed from sensor data
         for i in range(len(self.robot_list)):
-            self.robot_list[i].save_map("output/Map - Robot " + str(i) + " - " + self.robot_list[i].name)
+            self.robot_list[i].save_map("output/Map - Robot " + str(i))
 
         # Save the actual map and robot paths
         true_map = []
@@ -217,33 +258,10 @@ class GameView(arcade.View):
         plt.savefig("output/true_map")
         plt.close(fig)
 
-        with open("output/statistics.txt", "w+", encoding="utf-8") as f:
-            steps = self.timer_steps-1
-            sprite_count = len(self.wall_list) + len(self.robot_list)
-            f.write(f"Sprite Count: {sprite_count}\n")
-            f.write(f"Simulation Steps: {steps}\n")
-            self.draw_times.pop(0)
-            total_draw_time = 0
-            for t in self.draw_times:
-                total_draw_time += t
-            avg_draw_time = total_draw_time / steps
-            f.write(f"Average Draw Time: {avg_draw_time}\n")
-            f.write(f"Min Draw Time: {min(self.draw_times)}\n")
-            f.write(f"Max Draw Time: {max(self.draw_times)}\n")
-            f.write(f"Total Draw Time: {total_draw_time}\n")
-            self.processing_times.pop(0)
-            total_processing_time = 0
-            for t in self.processing_times:
-                total_processing_time += t
-            avg_processing_time = total_processing_time / steps
-            f.write(f"Average Processing Time: {avg_processing_time}\n")
-            f.write(f"Min Processing Time: {min(self.processing_times)}\n")
-            f.write(f"Max Processing Time: {max(self.processing_times)}\n")
-            f.write(f"Total Processing Time: {total_processing_time}\n")
-            f.write("\n")
-            f.write(f"Draw Times: {self.draw_times}\n\n")
-            f.write(f"Processing Times: {self.processing_times}\n")
+        with open("output/config.yaml", "w+", encoding="utf-8") as f:
+            f.write(str(ExplorerConfig()))
 
+        self.save_statistics()
 
     def on_update(self, delta_time):
         """ Movement and game logic """
