@@ -1,5 +1,5 @@
 """
-This is the initial main menu copied from an arcade demo (original comment below) with tweaked parameters.
+This is the initial load screen copied from an arcade demo (original comment below) with minor tweaks.
 
 ---
 
@@ -43,7 +43,6 @@ class MainMenuView(arcade.View):
             self.frame_count += 1
             return
 
-        """ If the user presses the mouse button, start the game. """
         game_view = GameView()
         game_view.setup()
         self.window.show_view(game_view)

@@ -1,15 +1,21 @@
 """
-This is the initial code copied from an arcade demo (original comment below) with tweaked parameters.
+GameView is responsible for the "world" in the simulation.
 
----
+That includes:
+- The camera
+- Objects in the world
+- Physics adherence
+- Most drawing
+- Termination and saving the results
 
-This example procedurally develops a random cave based on cellular automata.
+TODO: Move robot updates to separate processes.
+TODO: Make a WiFi simulator (message passing system) so robots don't need to know about other bots
 
-For more information, see:
+All other tasks are taken care of by other code (e.g. Robot).
+
+This is the initial code copied from an arcade demo:
 https://gamedevelopment.tutsplus.com/tutorials/generate-random-cave-levels-using-cellular-automata--gamedev-9664
-
-If Python and Arcade are installed, this example can be run from the command line with:
-python -m arcade.examples.procedural_caves_cellular
+python3 -m arcade.examples.procedural_caves_cellular
 """
 
 import arcade
@@ -26,6 +32,8 @@ from Robot import Robot
 
 
 class GameView(arcade.View):
+    """ View responsible for running the simulation """
+
     def __init__(self):
         super().__init__()
 
@@ -37,6 +45,7 @@ class GameView(arcade.View):
         self.processing_time = 0
         self.physics_engines = []
         self.timer_steps = 0
+        self.bot_paths = None
 
         # Create the cameras. One for the GUI, one for the sprites.
         # We scroll the 'sprite world' but not the GUI.
@@ -51,12 +60,9 @@ class GameView(arcade.View):
         self.draw_time_text = None
         self.processing_time_text = None
 
-        self.bot_paths = None
-
     def setup(self):
+        """ Most values initialized here in anticipation of a simulation restart in the future. """
         self.timer_steps = 0
-
-        self.robot_list = arcade.SpriteList(use_spatial_hash=True)
 
         # Create cave system using a 2D grid
         drawing_settings = ExplorerConfig().drawing_settings()
@@ -66,16 +72,16 @@ class GameView(arcade.View):
         self.max_x = int(map_generator_settings['grid_width'] * self.grid_size)
         self.max_y = int(map_generator_settings['grid_height'] * self.grid_size)
 
-        # Set up the player
-        robot_comm_settings = ExplorerConfig().robot_comm_settings()
+        # Set up the bots
+        self.robot_list = arcade.SpriteList(use_spatial_hash=True)
         self.bot_paths = []
         for i in range(ExplorerConfig().bot_count()):
             self.bot_paths.append([])
             robot_sprite = Robot(drawing_settings['scale'], self.wall_list, self.max_x, self.max_y)
-            robot_sprite.enable_comms(wireless_range=robot_comm_settings['wireless_range_grid_scale']*self.grid_size, update_period=robot_comm_settings['update_period'])
             self.robot_list.append(robot_sprite)
 
-        # need a a completed robot list before setting up the engines
+        # Setup the physics engines for collision detection and enforcement
+        # Arcade's simple engine only supports acting on one sprite at a time
         for robot_sprite in self.robot_list:
             for partner_sprite in self.robot_list:
                 if partner_sprite != robot_sprite:
@@ -84,6 +90,7 @@ class GameView(arcade.View):
             engine.update() # significantly reduces the chances of a bad initial position
             self.physics_engines.append(engine)
 
+        # Set the screen focused on the first bot
         self.scroll_to_robot(1.0)
 
         # Draw info on the screen
@@ -122,6 +129,8 @@ class GameView(arcade.View):
         # Draw the sprites
         self.wall_list.draw()
         self.robot_list.draw()
+
+        # Draw optional bot dynamics
         drawing_settings = ExplorerConfig().drawing_settings()
         for robot_sprite in self.robot_list:
             if drawing_settings['draw_trajectory'] and robot_sprite.path != []:
@@ -162,6 +171,7 @@ class GameView(arcade.View):
                 self.current_bot = 0
             self.bot_focus_timer = 0
 
+        # update camera position
         robot_sprite = self.robot_list[self.current_bot]
         position = Vec2(robot_sprite.center_x - self.window.width / 2,
                         robot_sprite.center_y - self.window.height / 2)
@@ -172,16 +182,22 @@ class GameView(arcade.View):
         """
         Resize window
         Handle the user grabbing the edge and resizing the window.
+
+        Note: I've never seen this working. The window size seems locked in spite of resizeable=True in the main function.
         """
         self.camera_sprites.resize(int(width), int(height))
         self.camera_gui.resize(int(width), int(height))
 
     def save_results(self):
+        """ Store any simulation results to files and images """
+        # Without this, save images when the folder doesn't exist crashes
         os.makedirs("output", exist_ok=True)
 
+        # Save each robot's map constructed from sensor data
         for i in range(len(self.robot_list)):
             self.robot_list[i].save_map("output/Map - Robot " + str(i))
 
+        # Save the actual map and robot paths
         true_map = []
         for wall_sprite in self.wall_list:
             true_map.append(wall_sprite.position)
@@ -198,6 +214,7 @@ class GameView(arcade.View):
     def on_update(self, delta_time):
         """ Movement and game logic """
 
+        # Shutdown and save results when the timer expires
         self.timer_steps += 1
         if self.timer_steps > ExplorerConfig().sim_steps():
             self.save_results()
@@ -205,15 +222,16 @@ class GameView(arcade.View):
 
         start_time = timeit.default_timer()
 
-        # Call update on all sprites (The sprites don't do much in this
-        # example though.)
+        # Update each robot's position
         for robot_sprite in self.robot_list:
             robot_sprite.update()
         for i in range(len(self.physics_engines)):
             self.physics_engines[i].update()
             self.bot_paths[i].append(self.robot_list[i].position)
 
-        # sensor updates
+        # Update each robot's sensor
+        # This isn't be done in the robot update so the robot doesn't need to know
+        # about the other bots.
         for robot_sprite in self.robot_list:
             robot_sprite.sensor_update([self.wall_list, self.robot_list])
 

@@ -1,5 +1,8 @@
-# Downloaded from https://github.com/Azrood/python-bresenham
-# This code was unlicensed at the time of copying (Aug 2, 2024)
+"""
+Downloaded from https://github.com/Azrood/python-bresenham
+
+This code was unlicensed at the time of copying (Aug 2, 2024)
+"""
 
 def get_line(start, end):
     """Bresenham's Line Algorithm

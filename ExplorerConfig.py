@@ -1,3 +1,16 @@
+"""
+Configuration Manager
+
+This includes both the default configuration values and a reader for YAML config files.
+
+Config files are overrides from the default so they can be just a subset of settings.
+
+Unfortunately, this does not enforce data types so bad config files could do weird things.
+This is considered user error not a bug.
+
+Comments to what each parameter does are in configs/base.yaml
+"""
+
 from copy import deepcopy
 import yaml
 

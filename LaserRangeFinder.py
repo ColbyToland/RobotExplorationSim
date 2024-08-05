@@ -1,9 +1,22 @@
+"""
+Look for an intersection along a line segment and return the distance from that intersection to the robot.
+
+However, there is some error because the distance is from the robot center to the obstruction center NOT
+the distance to the point of intersection.
+
+This is a structured noise unlike an actual range finder but it serves as a stand-in for that behavior.
+"""
+
 import math
 import numpy as np
 
 from bresenham_line import get_line
 
+
 class Measurement:
+    """ Stores a single measurement from the range finder """
+
+    # Even if a reading does not get a reflection, we still want to return that measurement attempt
     NONE = -1
 
     def __init__(self, position, orientation, dist, max_range):
@@ -17,15 +30,20 @@ class Measurement:
                 self.position[1] + d*math.sin(self.orientation)]
 
     def estimation(self, min_valid_range):
+        """ Use the distance to project out where the obstruction was """
         estimate = None
         if self.dist != self.NONE and self.dist >= min_valid_range:
             estimate = self._project(self.dist)
         return estimate
 
     def ray(self):
+        """ The furthest point that this sensor could detect an obstruction """
         return self._project(self.max_range)
 
+
 class Laser:
+    """ Simulate the laser by looking for a line collision with the spatial hash table """
+
     def __init__(self, laser_half_width, max_range, orientation):
         self.laser_half_width = laser_half_width
         self.orientation = orientation
@@ -35,12 +53,14 @@ class Laser:
         self.hash_lines = {}
 
     def endpoint(self, start):
+        """ Furthest point the laser can reach and be reflected """
         return [start[0]+self.ray[0], start[1]+self.ray[1]]
 
     def bresenham_line_hash_lookup(self, origin, spatial_hash):
-        # Use bresenham line drawing algorithm to identify relevant bucket indices
+        """ Use bresenham line drawing algorithm to identify relevant bucket indices """
         origin_hash = spatial_hash._hash(origin)
 
+        # get indices of the line segment
         line_bucket_inds = self.hash_lines.setdefault(spatial_hash.cell_size, {'start': (0,0), 'line': []})
         if not line_bucket_inds['line']:
             # Lazy initialization of the hash line for each hash cell size
@@ -48,14 +68,16 @@ class Laser:
             line_bucket_inds = {'start': origin_hash, 'line': get_line(origin_hash, endpt_hash)}
 
             self.hash_lines[spatial_hash.cell_size] = line_bucket_inds
+        # calculate the offset to move the line from it's first calculation to the current sensor position
         line_ind_offset = (origin_hash[0]-line_bucket_inds['start'][0], origin_hash[1]-line_bucket_inds['start'][1])
 
         # iterate over the line buckets
         close_by_sprites: set[SpriteType] = set()
         for b in line_bucket_inds['line']:
-                new_items = spatial_hash.contents.setdefault((b[0]+line_ind_offset[0], b[1]+line_ind_offset[1]), [])
-                close_by_sprites.update(new_items)
+            new_items = spatial_hash.contents.setdefault((b[0]+line_ind_offset[0], b[1]+line_ind_offset[1]), [])
+            close_by_sprites.update(new_items)
         return close_by_sprites
+
 
 def line_pt_distance(l1, l2, p):
     l1 = np.array(l1)
@@ -67,7 +89,7 @@ def point_in_box(pt, box):
     return pt[0] >= box[0] and pt[0] <= box[1] and pt[1] >= box[2] and pt[1] <= box[3]
 
 def line_intersection(p1, p2, p3, p4):
-    # Based on https://en.wikipedia.org/wiki/Line-line_intersection section "Given two points on each line segment"
+    """ Based on https://en.wikipedia.org/wiki/Line-line_intersection section "Given two points on each line segment" """
     # using the formula for t = n/d then testing 0 <= t <= 1 becomes 
     # n <= d if d and n are positive or 
     # n >= d if d and n are negative
@@ -105,31 +127,42 @@ def pt_distance(p1, p2):
     return float(np.linalg.norm(p1-p2))
 
 class LaserRangeFinder:
+    """ Simulate a laser range finder sensor """
+
     def __init__(self, bot, laser_half_width, max_range, orientation):
         self.bot = bot
         self.laser = Laser(laser_half_width, max_range, orientation)
 
     def measure(self, obstructions):
-        # obstructions must be a list of sprite lists with spatial hashing
+        """ measure the distance to the nearest obstruction along a line segment
 
+        obstructions must be a list of sprite lists with spatial hashing
+        """
+
+        # Find any obstacles near the laser path
         detection_candidates = []
         for subset in obstructions:
             detection_candidates.extend(self.laser.bresenham_line_hash_lookup(self.bot.position, subset.spatial_hash))
 
+        # Find the nearest valid candidate
         laser_endpt = self.laser.endpoint(self.bot.position)
         invalid_d = self.laser.max_range+1
         min_d = invalid_d
         collision_distance = self.bot.grid_size / 2
         for candidate in detection_candidates:
             if line_pt_distance(self.bot.position, laser_endpt, candidate.position) > self.laser.laser_half_width:
+                # ignore candidates that are outside the beam width
                 continue
             if line_box_intersection(self.bot.position, laser_endpt, candidate.position, candidate.width, candidate.height):
+                # find the nearest obstruction along the line segment
                 d = pt_distance(candidate.position, self.bot.position)
                 if d > collision_distance and d < min_d:
                     min_d = d
 
+        # Return a measurement even if an obstruction was observed
         result = Measurement(self.bot.position, self.laser.orientation, Measurement.NONE, self.laser.max_range)
         if min_d < invalid_d:
+            # Only send a distance if it's within the laser's range
             result = Measurement(self.bot.position, self.laser.orientation, min_d, self.laser.max_range)
         
         return result

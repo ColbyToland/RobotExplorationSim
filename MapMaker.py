@@ -1,5 +1,7 @@
 """
-This is the initial map maker copied from an arcade demo (original comment below) with tweaked parameters.
+This is the initial map maker copied from an arcade demo with tweaks.
+
+In the future, allow multiple generation methods not just cellular automata.
 
 ---
 
@@ -7,8 +9,6 @@ This example procedurally develops a random cave based on cellular automata.
 
 For more information, see:
 https://gamedevelopment.tutsplus.com/tutorials/generate-random-cave-levels-using-cellular-automata--gamedev-9664
-
-If Python and Arcade are installed, this example can be run from the command line with:
 python -m arcade.examples.procedural_caves_cellular
 """
 
