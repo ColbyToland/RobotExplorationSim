@@ -19,6 +19,7 @@ python3 -m arcade.examples.procedural_caves_cellular
 """
 
 import arcade
+import asyncio
 import timeit
 from matplotlib import pyplot as plt
 import numpy as np
@@ -59,6 +60,9 @@ class GameView(arcade.View):
         self.sprite_count_text = None
         self.draw_time_text = None
         self.processing_time_text = None
+
+        self.draw_times = []
+        self.processing_times = []
 
     def setup(self):
         """ Most values initialized here in anticipation of a simulation restart in the future. """
@@ -147,10 +151,12 @@ class GameView(arcade.View):
         output = f"Drawing time: {self.draw_time:.3f}"
         self.draw_time_text.text = output
         self.draw_time_text.draw()
+        self.draw_times.append(self.draw_time)
 
         output = f"Processing time: {self.processing_time:.3f}"
         self.processing_time_text.text = output
         self.processing_time_text.draw()
+        self.processing_times.append(self.processing_time)
 
         self.draw_time = timeit.default_timer() - draw_start_time
 
@@ -210,6 +216,35 @@ class GameView(arcade.View):
             plt.plot(self.robot_list[i].center_x, self.robot_list[i].center_y, '^')
         plt.axis((0, self.max_x, 0, self.max_y))
         plt.savefig("output/true_map")
+        plt.close(fig)
+
+        with open("output/statistics.txt", "w+", encoding="utf-8") as f:
+            steps = self.timer_steps-1
+            sprite_count = len(self.wall_list) + len(self.robot_list)
+            f.write(f"Sprite Count: {sprite_count}\n")
+            f.write(f"Simulation Steps: {steps}\n")
+            self.draw_times.pop(0)
+            total_draw_time = 0
+            for t in self.draw_times:
+                total_draw_time += t
+            avg_draw_time = total_draw_time / steps
+            f.write(f"Average Draw Time: {avg_draw_time}\n")
+            f.write(f"Min Draw Time: {min(self.draw_times)}\n")
+            f.write(f"Max Draw Time: {max(self.draw_times)}\n")
+            f.write(f"Total Draw Time: {total_draw_time}\n")
+            self.processing_times.pop(0)
+            total_processing_time = 0
+            for t in self.processing_times:
+                total_processing_time += t
+            avg_processing_time = total_processing_time / steps
+            f.write(f"Average Processing Time: {avg_processing_time}\n")
+            f.write(f"Min Processing Time: {min(self.processing_times)}\n")
+            f.write(f"Max Processing Time: {max(self.processing_times)}\n")
+            f.write(f"Total Processing Time: {total_processing_time}\n")
+            f.write("\n")
+            f.write(f"Draw Times: {self.draw_times}\n\n")
+            f.write(f"Processing Times: {self.processing_times}\n")
+
 
     def on_update(self, delta_time):
         """ Movement and game logic """
@@ -223,17 +258,46 @@ class GameView(arcade.View):
         start_time = timeit.default_timer()
 
         # Update each robot's position
-        for robot_sprite in self.robot_list:
-            robot_sprite.update()
-        for i in range(len(self.physics_engines)):
-            self.physics_engines[i].update()
+        async_params = ExplorerConfig().async_params()
+        async def async_robot_update():
+            async with asyncio.TaskGroup() as tg:
+                for i in range(len(self.robot_list)):
+                    tg.create_task(self.robot_list[i].update())
+        async def async_robot_update_with_physics():
+            async with asyncio.TaskGroup() as tg:
+                for i in range(len(self.robot_list)):
+                    tg.create_task(self.robot_list[i].update(self.physics_engines[i]))
+        async def sync_robot_update(a_sprite):
+            await a_sprite.update()
+        if async_params['use_async']:
+            if async_params['async_physics']:
+                asyncio.run(async_robot_update_with_physics())
+            else:
+                asyncio.run(async_robot_update())
+                for i in range(len(self.physics_engines)):
+                    self.physics_engines[i].update()
+        else:
+            for robot_sprite in self.robot_list:
+                asyncio.run(sync_robot_update(robot_sprite))
+            for i in range(len(self.physics_engines)):
+                self.physics_engines[i].update()
+        for i in range(len(self.robot_list)):
             self.bot_paths[i].append(self.robot_list[i].position)
 
         # Update each robot's sensor
         # This isn't be done in the robot update so the robot doesn't need to know
         # about the other bots.
-        for robot_sprite in self.robot_list:
-            robot_sprite.sensor_update([self.wall_list, self.robot_list])
+        async def async_sensor_update():
+            async with asyncio.TaskGroup() as tg:
+                for robot_sprite in self.robot_list:
+                    task = tg.create_task(robot_sprite.sensor_update([self.wall_list, self.robot_list]))
+        async def sync_sensor_update(a_sprite):
+            await a_sprite.sensor_update([self.wall_list, self.robot_list])
+        if async_params['use_async']:
+            asyncio.run(async_sensor_update())
+        else:
+            for robot_sprite in self.robot_list:
+                asyncio.run(sync_sensor_update(robot_sprite))
 
         # Scroll the screen to the player
         self.scroll_to_robot(ExplorerConfig().camera_settings()['speed'])

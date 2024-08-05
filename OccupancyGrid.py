@@ -4,6 +4,7 @@ A simple occupancy grid. The statistics are simplified to obstacles observed / o
 This effectively rejects spurious observations of transient obstructions while building a model of the world map.
 """
 
+import asyncio
 from datetime import datetime
 from enum import Enum
 import math
@@ -191,6 +192,7 @@ class OccupancyGrid:
             plt.plot(error[:][0], error[:][1], 'rX')
         plt.axis((0, self.max_x, 0, self.max_y))
         plt.savefig(name)
+        plt.close(fig)
 
     def copy(self):
         """ Create an identical occupancy grid """

@@ -8,6 +8,7 @@ Heavy usage of Arcade and it's example code as noted in other files. Otherwise o
 
 import arcade
 import argparse
+import random
 
 from ExplorerConfig import ExplorerConfig
 from MainMenuView import MainMenuView
@@ -23,6 +24,9 @@ def main():
     # This is the only place where a config file is passed in. From here, the ExplorerConfig
     # will act like a singleton pattern and continue to use the config file (if one was passed in).
     window_config = ExplorerConfig(args.config_filename).window_settings()
+
+    # Set random seed if applicable
+    random.seed(ExplorerConfig().map_generator_settings()['grid_seed'])
 
     # Build the window and start the simulation
     window_title = BASE_NAME

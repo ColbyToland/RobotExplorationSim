@@ -18,6 +18,8 @@ camera:                                 # Camera motion parameters
 simulation:                             # All things that affect the output images
   bot_count: 1                          # Number of bots to simulate
   sim_steps: 200                        # Number of simulation steps before the simulation ends and results saved out as images
+  use_async: true                       # Run bots and their sensors asynchronously
+  async_physics: true                   # Run the physics engines asynchronously (changes perceived position of other bots when running the physics engine and may make the performance non-repeatable)
   map_generator:                        # Randomly generated map parameters
     grid_width: 30                      # Map is a grid of walls and open space
     grid_height: 30

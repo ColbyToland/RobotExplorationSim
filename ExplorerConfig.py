@@ -38,6 +38,8 @@ DefaultExplorerConfig = {
     'simulation': {
         'bot_count': 3,
         'sim_steps': 1000,
+        'use_async': True,
+        'async_physics': True,
         'map_generator': {
             'grid_width': 40,
             'grid_height': 40,
@@ -137,6 +139,18 @@ class ExplorerConfig:
         if self._is_valid_key_chain(hdd_config_file, ['simulation', 'sim_steps']):
             return hdd_config_file['simulation']['sim_steps']
         return DefaultExplorerConfig['simulation']['sim_steps']
+
+    def async_params(self):
+        async_params = {'use_async': DefaultExplorerConfig['simulation']['use_async'], 
+                        'async_physics': DefaultExplorerConfig['simulation']['async_physics']}
+        if self._is_valid_key_chain(hdd_config_file, ['simulation', 'map_generator', 'grid_seed']) and hdd_config_file['simulation']['map_generator']['grid_seed']:
+            # If there is a random seed in the config file then default async_physics off
+            async_params['async_physics'] = False
+        if self._is_valid_key_chain(hdd_config_file, ['simulation', 'use_async']):
+            async_params['use_async'] = hdd_config_file['simulation']['use_async']
+        if self._is_valid_key_chain(hdd_config_file, ['simulation', 'async_physics']):
+            async_params['async_physics'] = hdd_config_file['simulation']['async_physics']
+        return async_params
 
     def map_generator_settings(self):
         if self._is_valid_key_chain(hdd_config_file, ['simulation']):

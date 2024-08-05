@@ -1,0 +1,6 @@
+simulation:
+  bot_count: 10
+  sim_steps: 200
+  async_physics: true
+  map_generator:
+    grid_seed: 112984

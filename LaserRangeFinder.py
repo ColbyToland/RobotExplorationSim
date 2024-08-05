@@ -7,6 +7,7 @@ the distance to the point of intersection.
 This is a structured noise unlike an actual range finder but it serves as a stand-in for that behavior.
 """
 
+import asyncio
 import math
 import numpy as np
 
@@ -133,7 +134,7 @@ class LaserRangeFinder:
         self.bot = bot
         self.laser = Laser(laser_half_width, max_range, orientation)
 
-    def measure(self, obstructions):
+    async def measure(self, obstructions):
         """ measure the distance to the nearest obstruction along a line segment
 
         obstructions must be a list of sprite lists with spatial hashing

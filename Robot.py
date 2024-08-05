@@ -11,6 +11,7 @@ BUG: Sometimes bots can start in a position that locks them in place.
 """
 
 import arcade
+import asyncio
 from datetime import datetime
 import math
 import random
@@ -149,7 +150,7 @@ class Robot(arcade.Sprite):
     	# Using Manhattan distance while not using diagonal movement
     	return (abs(self.center_x - self.dest_x) + abs(self.center_y - self.dest_y))
 
-    def update(self):
+    async def _update(self):
         """ Update the next target location if needed, the current position, and communication """
 
         # Update internal clock
@@ -177,10 +178,20 @@ class Robot(arcade.Sprite):
 
         self.update_comm_partners()
 
-    def sensor_update(self, obstructions):
+    async def update(self, physics_engine=None):
+        await self._update()
+        if physics_engine:
+            physics_engine.update()
+
+    async def sensor_update(self, obstructions):
         """ Simulate each range finder based on the simulated world """
+        measure_tasks = []
         for range_finder in self.range_finders:
-            self.map.update(range_finder.measure(obstructions))
+            measure_tasks.append(
+                asyncio.create_task(
+                    range_finder.measure(obstructions)))
+        for task in measure_tasks:
+            self.map.update(await task)
 
     def draw_sensors(self):
         """ Red dotted lines as long as the sensor range """
