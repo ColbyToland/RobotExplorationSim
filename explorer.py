@@ -18,7 +18,7 @@ BASE_NAME = "Arcade Explorer"
 def main():
     parser = argparse.ArgumentParser(prog="Arcade Explorer",
                                      description="Simulate robots traversing a map with sensors.")
-    parser.add_argument('config_filename')
+    parser.add_argument('config_filename', nargs='?')
     args = parser.parse_args()
 
     # This is the only place where a config file is passed in. From here, the ExplorerConfig

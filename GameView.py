@@ -200,7 +200,7 @@ class GameView(arcade.View):
 
         # Save each robot's map constructed from sensor data
         for i in range(len(self.robot_list)):
-            self.robot_list[i].save_map("output/Map - Robot " + str(i))
+            self.robot_list[i].save_map("output/Map - Robot " + str(i) + " - " + self.robot_list[i].name)
 
         # Save the actual map and robot paths
         true_map = []

@@ -37,7 +37,7 @@ DefaultExplorerConfig = {
         },
     'simulation': {
         'bot_count': 3,
-        'sim_steps': 1000,
+        'sim_steps': 200,
         'use_async': True,
         'async_physics': True,
         'map_generator': {
