@@ -8,7 +8,6 @@ That includes:
 - Most drawing
 - Termination and saving the results
 
-TODO: Move robot updates to separate processes.
 TODO: Make a WiFi simulator (message passing system) so robots don't need to know about other bots
 
 All other tasks are taken care of by other code (e.g. Robot).
@@ -258,17 +257,23 @@ class GameView(arcade.View):
         start_time = timeit.default_timer()
 
         # Update each robot's position
+
+        # Async modes
         async_params = ExplorerConfig().async_params()
         async def async_robot_update():
             async with asyncio.TaskGroup() as tg:
                 for i in range(len(self.robot_list)):
                     tg.create_task(self.robot_list[i].update())
+
         async def async_robot_update_with_physics():
             async with asyncio.TaskGroup() as tg:
                 for i in range(len(self.robot_list)):
                     tg.create_task(self.robot_list[i].update(self.physics_engines[i]))
+
         async def sync_robot_update(a_sprite):
             await a_sprite.update()
+
+        # Run the correct async version
         if async_params['use_async']:
             if async_params['async_physics']:
                 asyncio.run(async_robot_update_with_physics())
@@ -281,18 +286,21 @@ class GameView(arcade.View):
                 asyncio.run(sync_robot_update(robot_sprite))
             for i in range(len(self.physics_engines)):
                 self.physics_engines[i].update()
+
+        # Store the robot positions to plot their trail later
         for i in range(len(self.robot_list)):
             self.bot_paths[i].append(self.robot_list[i].position)
 
         # Update each robot's sensor
-        # This isn't be done in the robot update so the robot doesn't need to know
-        # about the other bots.
+        # This isn't done in the robot update because the sensor udpate needs to know
+        # about the other bots' positions.
         async def async_sensor_update():
             async with asyncio.TaskGroup() as tg:
                 for robot_sprite in self.robot_list:
                     task = tg.create_task(robot_sprite.sensor_update([self.wall_list, self.robot_list]))
         async def sync_sensor_update(a_sprite):
             await a_sprite.sensor_update([self.wall_list, self.robot_list])
+
         if async_params['use_async']:
             asyncio.run(async_sensor_update())
         else:
