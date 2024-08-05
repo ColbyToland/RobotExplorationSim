@@ -29,6 +29,7 @@ import sys
 from ExplorerConfig import ExplorerConfig
 import MapMaker
 from Robot import Robot
+from WiFi import WiFi
 
 
 class GameView(arcade.View):
@@ -66,6 +67,7 @@ class GameView(arcade.View):
     def setup(self):
         """ Most values initialized here in anticipation of a simulation restart in the future. """
         self.timer_steps = 0
+        self.wifi = WiFi()
 
         # Create cave system using a 2D grid
         drawing_settings = ExplorerConfig().drawing_settings()
@@ -86,9 +88,6 @@ class GameView(arcade.View):
         # Setup the physics engines for collision detection and enforcement
         # Arcade's simple engine only supports acting on one sprite at a time
         for robot_sprite in self.robot_list:
-            for partner_sprite in self.robot_list:
-                if partner_sprite != robot_sprite:
-                    robot_sprite.add_comm_subscriber(partner_sprite)
             engine = arcade.PhysicsEngineSimple(robot_sprite, [self.wall_list, self.robot_list])
             engine.update() # significantly reduces the chances of a bad initial position
             self.physics_engines.append(engine)
@@ -281,15 +280,15 @@ class GameView(arcade.View):
         async def async_robot_update():
             async with asyncio.TaskGroup() as tg:
                 for i in range(len(self.robot_list)):
-                    tg.create_task(self.robot_list[i].update())
+                    tg.create_task(self.robot_list[i].update(self.wifi))
 
         async def async_robot_update_with_physics():
             async with asyncio.TaskGroup() as tg:
                 for i in range(len(self.robot_list)):
-                    tg.create_task(self.robot_list[i].update(self.physics_engines[i]))
+                    tg.create_task(self.robot_list[i].update(self.wifi, self.physics_engines[i]))
 
         async def sync_robot_update(a_sprite):
-            await a_sprite.update()
+            await a_sprite.update(self.wifi)
 
         # Run the correct async version
         if async_params['use_async']:
@@ -308,6 +307,9 @@ class GameView(arcade.View):
         # Store the robot positions to plot their trail later
         for i in range(len(self.robot_list)):
             self.bot_paths[i].append(self.robot_list[i].position)
+
+        # Send messages queued up in the update
+        asyncio.run(self.wifi.update(self.robot_list))
 
         # Update each robot's sensor
         # This isn't done in the robot update because the sensor udpate needs to know

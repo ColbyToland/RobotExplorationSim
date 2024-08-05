@@ -13,6 +13,7 @@ BUG: Sometimes bots can start in a position that locks them in place.
 import arcade
 import asyncio
 from datetime import datetime
+from enum import Enum
 import math
 import random
 import numpy as np
@@ -20,6 +21,26 @@ import numpy as np
 from ExplorerConfig import ExplorerConfig
 from LaserRangeFinder import LaserRangeFinder, Measurement
 from OccupancyGrid import GridResolution, OccupancyGrid
+import WiFi
+
+
+class OccupancyGridMessage(WiFi.Message):
+    TYPE = "Occupancy Grid"
+    def __init__(self, sender, bot_name=None, oc_grid=None, timestamp=None, receivers=WiFi.Message.BROADCAST):
+        super().__init__(sender, msg_type = OccupancyGridMessage.TYPE, receivers=receivers)
+        self.bot_name = bot_name
+        self.bot_map = oc_grid
+        self.timestamp = timestamp
+
+    @property
+    def data(self):
+        return (self.bot_name, {'map': self.bot_map, 'timestamp': self.timestamp})
+    
+    @data.setter
+    def data(self, value):
+        self.bot_name = value[0]
+        self.bot_map = value[1]['map']
+        self.timestamp = value[1]['timestamp']
 
 
 # Store the assigned robot names in a global to avoid duplicates
@@ -68,7 +89,6 @@ class Robot(arcade.Sprite):
         self.comm_enabled = True
         self.comm_range = robot_comm_settings['wireless_range_grid_scale']*self.grid_size
         self.comm_update_period = robot_comm_settings['update_period']
-        self.comm_partners = []
 
     def gen_name(self):
         """ Randomly generate a unique name from name part lists """
@@ -92,34 +112,32 @@ class Robot(arcade.Sprite):
         """ Turn off comms """
         self.comm_enabled = False
 
-    def add_comm_subscriber(self, bot):
-        """ Add a message receiver for this bot """
-        # TODO: This should be done with a world level manager not a per-bot management
-        if not bot in self.comm_partners:
-            self.comm_partners.append(bot)
-
     def _comm_ready(self):
         return self.comm_enabled and self.timer_steps % self.comm_update_period == 0
 
-    def update_comm_partners(self):
+    async def update_comm_partners(self, wifi):
         """ Validate requirements are met then send occupancy map data to other bots """
-        # TODO: The range checking should be handled by a world level maanger not per-bot
         if not self._comm_ready():
             return
-        for bot in self.comm_partners:
-            if not bot.comm_enabled:
-                continue
-            d = float(np.linalg.norm(np.array(bot.position)-np.array(self.position)))
-            if d > self.comm_range or d > bot.comm_range:
-                continue
-            bot.add_partner_map(self.name, self.map, self.timer_steps)
-            for bot_name, partner_map in self.partner_maps.items():
-                bot.add_partner_map(bot_name, partner_map['map'], partner_map['timestamp'])
+        await wifi.send_message(OccupancyGridMessage(self, self.name, self.map, self.timer_steps))
+        for partner_map in self.partner_maps.items():
+            msg = OccupancyGridMessage(self)
+            msg.data = partner_map
+            await wifi.send_message(msg)
 
-    def add_partner_map(self, bot_name, partner_map, timestamp):
+    def _add_partner_map(self, bot_name, partner_map, timestamp):
         """ Accept map data for any other bot so long as it's newer than what is currently held """
         if not bot_name in self.partner_maps or timestamp > self.partner_maps[bot_name]['timestamp']:
             self.partner_maps[bot_name] = {'timestamp': timestamp, 'map': partner_map.copy()}
+
+    async def rcv_msg(self, msg):
+        if not isinstance(msg, WiFi.Message):
+            raise TypeError(f"Received an invalid message: {type(msg)}")
+        if msg.valid_receiver(self.name):
+            if isinstance(msg, OccupancyGridMessage):
+                self._add_partner_map(msg.bot_name, msg.bot_map, msg.timestamp)
+            else:
+                raise TypeError(f"Recieved an unsupported message: {type(msg)}")
 
     def _get_next_position(self):
         """ Randomly place the player. If we are in a wall, repeat until we aren't. """
@@ -156,7 +174,7 @@ class Robot(arcade.Sprite):
             if arcade.has_line_of_sight(self.position, dest, self.wall_list):
                 self.path = arcade.astar_calculate_path(self.position, dest, self.barrier_list, diagonal_movement = False)
 
-    async def _update(self):
+    async def _update(self, wifi):
         """ Update the next target location if needed, the current position, and communication """
 
         # Update internal clock
@@ -179,11 +197,11 @@ class Robot(arcade.Sprite):
         self.center_x += x_diff
         self.center_y += y_diff
 
-        self.update_comm_partners()
+        await self.update_comm_partners(wifi)
 
-    async def update(self, physics_engine=None):
+    async def update(self, wifi, physics_engine=None):
         prev_pos = self.position
-        await self._update()
+        await self._update(wifi)
         new_pos = self.position
         if physics_engine:
             physics_engine.update()
