@@ -54,6 +54,7 @@ DefaultExplorerConfig = {
                 }
             },
         'robot': {
+            'type': 'random',
             'map_resolution': 'parity',
             'sensor': {
                 'count': 8,
@@ -150,6 +151,9 @@ class ExplorerConfig:
             hdd_config_file['simulation']['map_generator']['grid_seed'] = random.randrange(sys.maxsize)
             params['grid_seed'] = hdd_config_file['simulation']['map_generator']['grid_seed']
         return params
+
+    def robot_type(self):
+        return hdd_config_file['simulation']['robot']['type']
 
     def robot_map_resolution(self):
         rez_name =  hdd_config_file['simulation']['robot']['map_resolution'].casefold().strip()

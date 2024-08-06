@@ -1,3 +1,7 @@
+"""
+Handle sending messages between bots.
+"""
+
 import asyncio
 import numpy as np
 

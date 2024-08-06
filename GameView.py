@@ -28,7 +28,8 @@ import sys
 
 from ExplorerConfig import ExplorerConfig
 import MapMaker
-from Robot import Robot
+import Robot
+import RandomRobot
 from WiFi import WiFi
 
 
@@ -64,6 +65,14 @@ class GameView(arcade.View):
         self.draw_times = []
         self.processing_times = []
 
+    def _build_robot(self):
+        robot_type = ExplorerConfig().robot_type()
+        if robot_type == Robot.TYPE_NAME:
+            return Robot.Robot(self.wall_list, self.max_x, self.max_y)
+        elif robot_type == RandomRobot.TYPE_NAME:
+            return RandomRobot.RandomRobot(self.wall_list, self.max_x, self.max_y)
+        raise ValueError(f"Robot type is not recognized: {robot_type}")
+
     def setup(self):
         """ Most values initialized here in anticipation of a simulation restart in the future. """
         self.timer_steps = 0
@@ -82,7 +91,7 @@ class GameView(arcade.View):
         self.bot_paths = []
         for i in range(ExplorerConfig().bot_count()):
             self.bot_paths.append([])
-            robot_sprite = Robot(drawing_settings['scale'], self.wall_list, self.max_x, self.max_y)
+            robot_sprite = self._build_robot()
             self.robot_list.append(robot_sprite)
 
         # Setup the physics engines for collision detection and enforcement

@@ -24,6 +24,9 @@ from OccupancyGrid import GridResolution, OccupancyGrid
 import WiFi
 
 
+TYPE_NAME = "base"
+
+
 class OccupancyGridMessage(WiFi.Message):
     TYPE = "Occupancy Grid"
     def __init__(self, sender, bot_name=None, oc_grid=None, timestamp=None, receivers=WiFi.Message.BROADCAST):
@@ -49,10 +52,13 @@ assigned_robot_names = []
 class Robot(arcade.Sprite):
     """ Sprite to simulate a single robot """
 
-    def __init__(self, scale, wall_list, max_x, max_y, speed = 5):
+    ## Setup ##
+
+    def __init__(self, wall_list, max_x, max_y, speed = 5):
         """ Initialization takes care of all setup. There are no additional setup functions. """
 
-        super().__init__(":resources:images/animated_characters/robot/robot_idle.png", scale)
+        drawing_settings = ExplorerConfig().drawing_settings()
+        super().__init__(":resources:images/animated_characters/robot/robot_idle.png", drawing_settings['scale'])
 
         self.timer_steps= 0
         self.name = None
@@ -60,10 +66,10 @@ class Robot(arcade.Sprite):
         self.wall_list = wall_list
         self.max_x = max_x
         self.max_y = max_y
-        self.center_x, self.center_y = self._get_next_position()
+        self.center_x, self.center_y = self._get_valid_position()
         self.dest_x, self.dest_y = self.center_x, self.center_y
         self.speed = speed
-        self.grid_size = 128*scale
+        self.grid_size = drawing_settings['size']*drawing_settings['scale']
 
         # path planning
         self.barrier_list = arcade.AStarBarrierList(self, self.wall_list, self.grid_size, 0, max_x, 0, max_y)
@@ -115,6 +121,59 @@ class Robot(arcade.Sprite):
     def _comm_ready(self):
         return self.comm_enabled and self.timer_steps % self.comm_update_period == 0
 
+    def _is_position_valid(self, pos):
+        """ Set the current position to the position to check, check for collision, set position back """
+        if pos[0] < 0 or pos[0] > self.max_x or pos[1] < 0 or pos[1] > self.max_y:
+            # Out of bounds
+            return False
+        cur_pos = self.position
+        self.center_x = pos[0]
+        self.center_y = pos[1]
+        walls_hit = arcade.check_for_collision_with_list(self, self.wall_list)
+        self.position = cur_pos
+        return len(walls_hit) == 0
+
+    def _get_valid_position(self):
+        """ Randomly place the player. If we are in a wall, repeat until we aren't. """
+        next_x = self.center_x
+        next_y = self.center_y
+        placed = False
+        while not placed:
+
+            # Randomly position
+            next_x = random.randrange(self.max_x)
+            next_y = random.randrange(self.max_y)
+
+            if self._is_position_valid([next_x, next_y]):
+                placed = True
+
+        return (next_x, next_y)
+
+    def _check_and_fix_jammed_robot(self):
+        self.jam_check['position_buffer'][self.jam_check['index']] = self.position
+
+        jammed = True
+        for i in range(1, len(self.jam_check['position_buffer'])):
+            if self.jam_check['position_buffer'][i] != self.jam_check['position_buffer'][i-1]:
+                jammed = False
+                break
+
+        if jammed:
+            candidate_fixes = [[self.center_x+self.grid_size, self.center_y],
+                               [self.center_x-self.grid_size, self.center_y],
+                               [self.center_x, self.center_y+self.grid_size],
+                               [self.center_x, self.center_y-self.grid_size]]
+            for fix in candidate_fixes:
+                if self.is_position_valid(fix):
+                    self.center_x = fix[0]
+                    self.center_y = fix[1]
+                    self.jam_check['position_buffer'][self.jam_check['index']] = self.position
+
+        self.jam_check['index'] = (self.jam_check['index'] + 1) % len(self.jam_check['position_buffer'])
+
+
+    ## Communication ##
+
     async def update_comm_partners(self, wifi):
         """ Validate requirements are met then send occupancy map data to other bots """
         if not self._comm_ready():
@@ -139,63 +198,14 @@ class Robot(arcade.Sprite):
             else:
                 raise TypeError(f"Recieved an unsupported message: {type(msg)}")
 
-    def _get_next_position(self):
-        """ Randomly place the player. If we are in a wall, repeat until we aren't. """
-        cur_x = self.center_x
-        cur_y = self.center_y
-        placed = False
-        while not placed:
 
-            # Randomly position
-            self.center_x = random.randrange(self.max_x)
-            self.center_y = random.randrange(self.max_y)
-
-            # Are we in a wall?
-            walls_hit = arcade.check_for_collision_with_list(self, self.wall_list)
-            if len(walls_hit) == 0:
-                # Not in a wall! Success!
-                placed = True
-
-        # Return the safe position and reset to original position
-        next_x = self.center_x
-        next_y = self.center_y
-        self.center_x = cur_x
-        self.center_y = cur_y
-
-        return (next_x, next_y)
-
-    def distance_to_goal(self):
-        # Using Manhattan distance while not using diagonal movement
-        return (abs(self.center_x - self.dest_x) + abs(self.center_y - self.dest_y))
-
-    def _get_new_path(self):
-        while self.path == [] or self.path == None:
-            dest = self._get_next_position()
-            if arcade.has_line_of_sight(self.position, dest, self.wall_list):
-                self.path = arcade.astar_calculate_path(self.position, dest, self.barrier_list, diagonal_movement = False)
+    ## Updates ##
 
     async def _update(self, wifi):
-        """ Update the next target location if needed, the current position, and communication """
+        """ Base robot doesn't move automatically """
 
         # Update internal clock
         self.timer_steps += 1
-
-        if self.distance_to_goal() <= self.speed or self.path == []:
-            if self.path == []:
-                self._get_new_path()
-            self.dest_x, self.dest_y = self.path.pop(0)
-
-        # X and Y diff between the two
-        x_diff = self.dest_x - self.center_x
-        y_diff = self.dest_y - self.center_y
-
-        if abs(x_diff) > self.speed:
-            x_diff = math.copysign(self.speed, x_diff)
-        if abs(y_diff) > self.speed:
-            y_diff = math.copysign(self.speed, y_diff)
-
-        self.center_x += x_diff
-        self.center_y += y_diff
 
         await self.update_comm_partners(wifi)
 
@@ -211,7 +221,6 @@ class Robot(arcade.Sprite):
             self._get_new_path()
             self.dest_x, self.dest_y = self.path.pop(0)
 
-
     async def sensor_update(self, obstructions):
         """ Simulate each range finder based on the simulated world """
         measure_tasks = []
@@ -221,6 +230,9 @@ class Robot(arcade.Sprite):
                     range_finder.measure(obstructions)))
         for task in measure_tasks:
             self.map.update(await task)
+
+
+    ## Drawing ##
 
     def draw_sensors(self):
         """ Red dotted lines as long as the sensor range """
@@ -249,6 +261,9 @@ class Robot(arcade.Sprite):
         arcade.draw_circle_outline(self.center_x, self.center_y, radius, arcade.color.BLUE)
         arcade.draw_circle_outline(self.center_x, self.center_y, radius-shrink, arcade.color.BLUE)
         arcade.draw_circle_outline(self.center_x, self.center_y, radius-2*shrink, arcade.color.BLUE)
+
+
+    ## End Simulation ##
 
     def save_map(self, name=None):
         """ Convert the occupancy map to an image """

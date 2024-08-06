@@ -1,0 +1,5 @@
+simulation:
+  bot_count: 3
+  sim_steps: 1000
+  use_async: true
+  async_physics: true

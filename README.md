@@ -27,3 +27,6 @@ The simulation ends with 4 types of output in an `output` directory:
 * **`Map - Robot {id} - Merged.png`** - combination of all robot occupancy grids this bot has received and with its own occupancy grid
 * **`true_map.png`** - the paths of all robots and all obstructions
 * **`statistics.txt`** - any simulation statistics gathered
+
+## New Robot Behavior
+To test a new exploration algorithm, create a robot class that inherits from `Robot`. `RandomRobot` gives a basic example. To make it selectable, logic in the `GameView._build_robot()` is needed as well.
