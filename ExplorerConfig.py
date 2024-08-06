@@ -130,6 +130,16 @@ class ExplorerConfig:
 
     def drawing_settings(self):
         return hdd_config_file['drawing']
+
+    def grid_size(self):
+        drawing_settings = self.drawing_settings()
+        return drawing_settings['size']*drawing_settings['scale']
+
+    def max_x(self):
+        return int(map_generator_settings['grid_width'] * self.grid_size())
+
+    def max_y(self):
+        return int(map_generator_settings['grid_height'] * self.grid_size())
  
     def camera_settings(self):
         return hdd_config_file['camera']
@@ -176,80 +186,3 @@ class ExplorerConfig:
 
     def __str__(self):
         return yaml.dump(deepcopy(hdd_config_file))
-
-if __name__ == "__main__":
-    # TODO: Convert this to a unit test in pytest!
-
-    print("No file just defaults:")
-    print("======================")
-    default = ExplorerConfig()
-    print("window_settings:")
-    print(default.window_settings())
-    print("drawing_settings")
-    print(default.drawing_settings())
-    print("camera_settings:")
-    print(default.camera_settings())
-    print("bot_count:")
-    print(default.bot_count())
-    print("sim_steps:")
-    print(default.sim_steps())
-    print("map_generator_settings:")
-    print(default.map_generator_settings())
-    print("robot_map_resolution:")
-    print(default.robot_map_resolution())
-    print("robot_sensor_settings:")
-    print(default.robot_sensor_settings())
-    print("robot_comm_settings:")
-    print(default.robot_comm_settings())
-    print("robot_name_gen_parameters:")
-    print(default.robot_name_gen_parameters())
-    print("------------------------------------")
-    print("------------------------------------")
-    print("base.yaml:")
-    print("==========")
-    ExplorerConfig("configs/base.yaml")
-    print("window_settings:")
-    print(default.window_settings())
-    print("drawing_settings")
-    print(default.drawing_settings())
-    print("camera_settings:")
-    print(default.camera_settings())
-    print("bot_count:")
-    print(default.bot_count())
-    print("sim_steps:")
-    print(default.sim_steps())
-    print("map_generator_settings:")
-    print(default.map_generator_settings())
-    print("robot_map_resolution:")
-    print(default.robot_map_resolution())
-    print("robot_sensor_settings:")
-    print(default.robot_sensor_settings())
-    print("robot_comm_settings:")
-    print(default.robot_comm_settings())
-    print("robot_name_gen_parameters:")
-    print(default.robot_name_gen_parameters())
-    print("------------------------------------")
-    print("------------------------------------")
-    print("minimal.yaml:")
-    print("=============")
-    ExplorerConfig("configs/minimal.yaml")
-    print("window_settings:")
-    print(default.window_settings())
-    print("drawing_settings")
-    print(default.drawing_settings())
-    print("camera_settings:")
-    print(default.camera_settings())
-    print("bot_count:")
-    print(default.bot_count())
-    print("sim_steps:")
-    print(default.sim_steps())
-    print("map_generator_settings:")
-    print(default.map_generator_settings())
-    print("robot_map_resolution:")
-    print(default.robot_map_resolution())
-    print("robot_sensor_settings:")
-    print(default.robot_sensor_settings())
-    print("robot_comm_settings:")
-    print(default.robot_comm_settings())
-    print("robot_name_gen_parameters:")
-    print(default.robot_name_gen_parameters())

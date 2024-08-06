@@ -54,7 +54,7 @@ class Robot(arcade.Sprite):
 
     ## Setup ##
 
-    def __init__(self, wall_list, max_x, max_y, speed = 5):
+    def __init__(self, wall_list, speed = 5):
         """ Initialization takes care of all setup. There are no additional setup functions. """
 
         drawing_settings = ExplorerConfig().drawing_settings()
@@ -64,15 +64,15 @@ class Robot(arcade.Sprite):
         self.name = None
         self.gen_name()
         self.wall_list = wall_list
-        self.max_x = max_x
-        self.max_y = max_y
+        self.max_x = ExplorerConfig().max_x()
+        self.max_y = ExplorerConfig().max_y()
+        self.grid_size = ExplorerConfig().grid_size()
         self.center_x, self.center_y = self._get_valid_position()
         self.dest_x, self.dest_y = self.center_x, self.center_y
         self.speed = speed
-        self.grid_size = drawing_settings['size']*drawing_settings['scale']
 
         # path planning
-        self.barrier_list = arcade.AStarBarrierList(self, self.wall_list, self.grid_size, 0, max_x, 0, max_y)
+        self.barrier_list = arcade.AStarBarrierList(self, self.wall_list, self.grid_size, 0, self.max_x, 0, self.max_y)
         self.path = []
 
         self.jam_check = {'position_buffer': [], 'index':0}
@@ -91,7 +91,7 @@ class Robot(arcade.Sprite):
                                                        orientation=i*2*math.pi/robot_sensor_settings['count']))
 
         # map
-        self.map = OccupancyGrid(self.max_x, self.max_y, self.grid_size, ExplorerConfig().robot_map_resolution())
+        self.map = OccupancyGrid()
         self.partner_maps = {}
 
         # comms
@@ -137,8 +137,16 @@ class Robot(arcade.Sprite):
         self.position = cur_pos
         return len(walls_hit) == 0
 
-    def _get_valid_position(self):
-        """ Randomly select a valid position not in the walls """
+    def _is_position_valid_in_occupancy_grid(self, pos):
+        cell_status = self.map.get_cell(next_x, next_y).status()
+        return cell_status == GridCellStatus.UNEXPLORED or cell_status == GridCellStatus.CLEAR
+
+    def _is_position_unknown_in_occupancy_grid(self, pos):
+        cell_status = self.map.get_cell(next_x, next_y).status()
+        return cell_status == GridCellStatus.UNEXPLORED or cell_status == GridCellStatus.CLEAR
+
+    def _get_position(self, test_func)
+        """ Randomly select a valid position that meets the test condition """
         next_x = self.center_x
         next_y = self.center_y
         placed = False
@@ -148,10 +156,22 @@ class Robot(arcade.Sprite):
             next_x = random.randrange(self.max_x)
             next_y = random.randrange(self.max_y)
 
-            if self._is_position_valid([next_x, next_y]):
+            if test_func([next_x, next_y]):
                 placed = True
 
         return (next_x, next_y)
+
+    def _get_valid_position(self):
+        """ Randomly select a valid position not in the walls """
+        return self._get_position(self._is_position_valid)
+
+    def _get_valid_position_from_occupancy_grid(self):
+        """ Randomly select a valid position not in the walls """
+        return self._get_position(self._is_position_valid_in_occupancy_grid)
+
+    def _get_unknown_position_from_occupancy_grid(self):
+        """ Randomly select a valid position not in the walls """
+        return self._get_position(self._is_position_unknown_in_occupancy_grid)
 
 
     ## Communication ##

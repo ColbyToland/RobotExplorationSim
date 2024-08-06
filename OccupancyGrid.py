@@ -4,6 +4,7 @@ A simple occupancy grid. The statistics are simplified to obstacles observed / o
 This effectively rejects spurious observations of transient obstructions while building a model of the world map.
 """
 
+import arcade
 import asyncio
 from datetime import datetime
 from enum import Enum
@@ -13,6 +14,7 @@ import numpy as np
 
 from bresenham_line import get_line
 from LaserRangeFinder import Measurement
+from MapMaker import WallSprite
 
 
 class GridResolution(Enum):
@@ -28,6 +30,9 @@ class GridCellStatus(Enum):
     CLEAR = 0
     OBSTACLE = 1
 
+
+# Should this be in the config file? Seems algorithm dependent so opted for simplicity.
+DEFAULT_OBSTACLE_THRESHOLD = 0.5
 
 class GridCell:
     """ A single cell of the occupancy grid """
@@ -53,7 +58,7 @@ class GridCell:
         self.observe()
         self._obstacles += 1
 
-    def status(self, obstacle_threshold=0.5):
+    def status(self, obstacle_threshold=DEFAULT_OBSTACLE_THRESHOLD):
         """ Convert the obstacle/observation ratio to a state
 
         obstacle_threshold -- Define the minimum % obstacle observations to be considered an obstacle
@@ -90,7 +95,7 @@ class GridCell:
 
 class OccupancyGrid:
     """ Store a model of the world in a grid of observation ratios """
-    def __init__(self, max_x, max_y, grid_size, resolution):
+    def __init__(self):
         """ Setup a grid space that summarizes a higher resolution rectangle
 
         max_x -- pixel width
@@ -101,19 +106,20 @@ class OccupancyGrid:
                         - GridResolution.PARITY 1:1
                         - GridResolution.HIGH 4:1
         """
-        self.max_x = max_x
-        self.max_y = max_y
-        self.grid_size = grid_size
-        self.resolution = resolution
+        self.max_x = ExplorerConfig().max_x()
+        self.max_y = ExplorerConfig().max_y()
+        self.grid_size = ExplorerConfig().grid_size()
         self.resolution_scale = self.grid_size # PARITY
-        if self.resolution == GridResolution.LOW:
+        if ExplorerConfig().robot_map_resolution() == GridResolution.LOW:
             self.resolution_scale *= 2
-        elif self.resolution == GridResolution.HIGH:
+        elif ExplorerConfig().robot_map_resolution() == GridResolution.HIGH:
             self.resolution_scale *= 0.5
 
         # Build map
-        self.columns, self.rows = self._ind(max_x, max_y)
+        self.columns, self.rows = self._ind(self.max_x, self.max_y)
         self.map = [[GridCell() for _r in range(self.rows)] for _c in range(self.columns)]
+        self._known_walls = {'list': arcade.SpriteList(use_spatial_hash=True), 
+                             'map': [[None for _r in range(self.rows)] for _c in range(self.columns)]}
 
     def _ind(self, x, y):
         """ Grid index for a given position """
@@ -140,6 +146,10 @@ class OccupancyGrid:
             r = self.rows-1
         return c, r
 
+    def get_cell(self, x, y):
+        c, r = self.map_ind(key[0], key[1])
+        return self.map[c][r].copy()
+
     def update(self, measurement, valid_distance=1):
         """ Update all grid positions covered by a single range finder laser measurement """
         endpoint = measurement.estimation(valid_distance)
@@ -156,7 +166,7 @@ class OccupancyGrid:
             else:
                 self.map[inds[0]][inds[1]].observe()
 
-    def save_map(self, name=None, obstacle_threshold=0.5):
+    def save_map(self, name=None, obstacle_threshold=DEFAULT_OBSTACLE_THRESHOLD):
         """ Convert the occupancy grid to an image
 
         name -- desired filename
@@ -196,7 +206,7 @@ class OccupancyGrid:
 
     def copy(self):
         """ Create an identical occupancy grid """
-        mirror = OccupancyGrid(self.max_x, self.max_y, self.grid_size, self.resolution)
+        mirror = OccupancyGrid()
         for c in range(self.columns):
             for r in range(self.rows):
                 mirror.map[c][r] = self.map[c][r].copy()
@@ -209,3 +219,36 @@ class OccupancyGrid:
         for c in range(self.columns):
             for r in range(self.rows):
                 self.map[c][r] += other_map.map[c][r]
+
+    def _update_known_walls_map(self, obstacle_threshold=DEFAULT_OBSTACLE_THRESHOLD):
+        map_changed = False
+        for c in range(self.columns):
+            for r in range(self.rows):
+                cell_status = self.map[c][r].status(obstacle_threshold)
+                if cell_status == GridCellStatus.OBSTACLE:
+                    if not isinstance(self._known_walls['map'][c][r], WallSprite):
+                        wall = WallSprite()
+                        wall.center_x, wall.center_y = self._position(c, r)
+                        self._known_walls['map'][c][r] = wall
+                        map_changed = True
+                elif isinstance(self._known_walls['map'][c][r], WallSprite):
+                    self._known_walls['map'][c][r] = None
+                    map_changed = True
+        return map_changed
+
+    def _update_known_walls_list(self):
+        self._known_walls['list'] = arcade.SpriteList(use_spatial_hash=True)
+        for c in range(self.columns):
+            for r in range(self.rows):
+                if isinstance(self._known_walls['map'][c][r], WallSprite):
+                    self._known_walls['list'].append(self._known_walls['map'][c][r])
+
+    def get_known_walls(self, obstacle_threshold=DEFAULT_OBSTACLE_THRESHOLD):
+        """ Return a list of wall sprites at the position of obstructions """
+
+        # The known walls are only updated when this is called and the wall list is
+        # maintained between calls to minimize sprite construction
+        if self._update_known_walls_map(DEFAULT_OBSTACLE_THRESHOLD):
+            self._update_known_walls_list()
+
+        return self._known_walls['list']

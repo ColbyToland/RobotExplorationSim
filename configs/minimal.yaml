@@ -4,3 +4,5 @@ simulation:
   use_async: false
   map_generator:
     grid_seed: 1599335621182662412
+  robot:
+      type: naive_random

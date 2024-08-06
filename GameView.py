@@ -28,6 +28,7 @@ import sys
 
 from ExplorerConfig import ExplorerConfig
 import MapMaker
+import NaiveRandomRobot
 import Robot
 import RandomRobot
 from WiFi import WiFi
@@ -40,7 +41,6 @@ class GameView(arcade.View):
         super().__init__()
 
         self.grid = None
-        self.grid_size = None
         self.wall_list = None
         self.robot_list = None
         self.draw_time = 0
@@ -68,9 +68,11 @@ class GameView(arcade.View):
     def _build_robot(self):
         robot_type = ExplorerConfig().robot_type()
         if robot_type == Robot.TYPE_NAME:
-            return Robot.Robot(self.wall_list, self.max_x, self.max_y)
+            return Robot.Robot(self.wall_list)
         elif robot_type == RandomRobot.TYPE_NAME:
-            return RandomRobot.RandomRobot(self.wall_list, self.max_x, self.max_y)
+            return RandomRobot.RandomRobot(self.wall_list)
+        elif robot_type == NaiveRandomRobot.TYPE_NAME:
+             return NaiveRandomRobot.NaiveRandomRobot(self.wall_list)
         raise ValueError(f"Robot type is not recognized: {robot_type}")
 
     def setup(self):
@@ -79,12 +81,7 @@ class GameView(arcade.View):
         self.wifi = WiFi()
 
         # Create cave system using a 2D grid
-        drawing_settings = ExplorerConfig().drawing_settings()
-        self.grid_size = drawing_settings['scale']*drawing_settings['size']
-        self.grid, self.wall_list = MapMaker.generate_map(self.grid_size, drawing_settings['scale'])
-        map_generator_settings = ExplorerConfig().map_generator_settings()
-        self.max_x = int(map_generator_settings['grid_width'] * self.grid_size)
-        self.max_y = int(map_generator_settings['grid_height'] * self.grid_size)
+        self.grid, self.wall_list = MapMaker.generate_map(ExplorerConfig().drawing_settings()['scale'])
 
         # Set up the bots
         self.robot_list = arcade.SpriteList(use_spatial_hash=True)
@@ -262,7 +259,8 @@ class GameView(arcade.View):
             new_path = np.array(self.bot_paths[i]).T
             plt.plot(new_path[:][0], new_path[:][1])
             plt.plot(self.robot_list[i].center_x, self.robot_list[i].center_y, '^')
-        plt.axis((0, self.max_x, 0, self.max_y))
+
+        plt.axis((0, ExplorerConfig().max_x(), 0, ExplorerConfig().max_y()))
         plt.savefig("output/true_map")
         plt.close(fig)
 

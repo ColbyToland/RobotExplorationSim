@@ -23,12 +23,10 @@ def create_grid(width, height):
     return [[0 for _x in range(width)] for _y in range(height)]
 
 
-def initialize_grid(grid, seed = None):
+def initialize_grid(grid):
     """ Randomly set grid locations to on/off based on chance. """
     height = len(grid)
     width = len(grid[0])
-    if seed:
-        random.seed(seed)
     for row in range(height):
         for column in range(width):
             if random.random() <= ExplorerConfig().map_generator_settings()['cellular']['start_alive_chance']:
@@ -75,7 +73,12 @@ def do_simulation_step(old_grid):
                     new_grid[y][x] = 0
     return new_grid
 
-def generate_map(sprite_size, sprite_scale):
+class WallSprite(arcade.Sprite):
+    """ Sprite for wall obstructions """
+    def __init__(self):
+        super().__init__(":resources:images/tiles/grassCenter.png", ExplorerConfig().drawing_settings()['scale'])
+
+def generate_map():
     # Create cave system using a 2D grid
     map_generator_settings = ExplorerConfig().map_generator_settings()
     grid = create_grid(map_generator_settings['grid_width'], map_generator_settings['grid_height'])
@@ -85,13 +88,14 @@ def generate_map(sprite_size, sprite_scale):
 
     # Create sprites based on 2D grid
     # Each grid location is a sprite.
+    grid_size = ExplorerConfig().grid_size()
     wall_list = arcade.SpriteList(use_spatial_hash=True)
     for row in range(map_generator_settings['grid_height']):
         for column in range(map_generator_settings['grid_width']):
             if grid[row][column] == 1:
-                wall = arcade.Sprite(":resources:images/tiles/grassCenter.png", sprite_scale)
-                wall.center_x = column * sprite_size + sprite_size / 2
-                wall.center_y = row * sprite_size + sprite_size / 2
+                wall = WallSprite()
+                wall.center_x = column * grid_size + grid_size / 2
+                wall.center_y = row * grid_size + grid_size / 2
                 wall_list.append(wall)
 
     return (grid, wall_list)
