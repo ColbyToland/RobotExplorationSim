@@ -1,13 +1,11 @@
 """
-This initial robot randomly selects valid locations to travel to then uses A* to find a path to them.
+The base robot doesn't move but provides the core functionality.
 
 Responsibilities:
 - Build an occupancy map
 - Manage sensors
 - Path planning and movement
 - Communicate with other bots
-
-BUG: Sometimes bots can start in a position that locks them in place.
 """
 
 import arcade
@@ -16,7 +14,6 @@ from datetime import datetime
 from enum import Enum
 import math
 import random
-import numpy as np
 
 from ExplorerConfig import ExplorerConfig
 from LaserRangeFinder import LaserRangeFinder, Measurement
@@ -49,6 +46,9 @@ class OccupancyGridMessage(WiFi.Message):
 # Store the assigned robot names in a global to avoid duplicates
 assigned_robot_names = []
 
+def manhattan_dist(p1, p2):
+    return (abs(p1[0]-p2[0])+abs(p1[1]-p2[1]))
+
 class Robot(arcade.Sprite):
     """ Sprite to simulate a single robot """
 
@@ -74,6 +74,10 @@ class Robot(arcade.Sprite):
         # path planning
         self.barrier_list = arcade.AStarBarrierList(self, self.wall_list, self.grid_size, 0, max_x, 0, max_y)
         self.path = []
+
+        self.jam_check = {'position_buffer': [], 'index':0}
+        for i in range(10):
+            self.jam_check['position_buffer'].append([self.center_x + i*self.speed, self.center_y + i*self.speed])
 
         # sensors
         robot_sensor_settings = ExplorerConfig().robot_sensor_settings()
@@ -134,7 +138,7 @@ class Robot(arcade.Sprite):
         return len(walls_hit) == 0
 
     def _get_valid_position(self):
-        """ Randomly place the player. If we are in a wall, repeat until we aren't. """
+        """ Randomly select a valid position not in the walls """
         next_x = self.center_x
         next_y = self.center_y
         placed = False
@@ -148,28 +152,6 @@ class Robot(arcade.Sprite):
                 placed = True
 
         return (next_x, next_y)
-
-    def _check_and_fix_jammed_robot(self):
-        self.jam_check['position_buffer'][self.jam_check['index']] = self.position
-
-        jammed = True
-        for i in range(1, len(self.jam_check['position_buffer'])):
-            if self.jam_check['position_buffer'][i] != self.jam_check['position_buffer'][i-1]:
-                jammed = False
-                break
-
-        if jammed:
-            candidate_fixes = [[self.center_x+self.grid_size, self.center_y],
-                               [self.center_x-self.grid_size, self.center_y],
-                               [self.center_x, self.center_y+self.grid_size],
-                               [self.center_x, self.center_y-self.grid_size]]
-            for fix in candidate_fixes:
-                if self.is_position_valid(fix):
-                    self.center_x = fix[0]
-                    self.center_y = fix[1]
-                    self.jam_check['position_buffer'][self.jam_check['index']] = self.position
-
-        self.jam_check['index'] = (self.jam_check['index'] + 1) % len(self.jam_check['position_buffer'])
 
 
     ## Communication ##
@@ -201,6 +183,31 @@ class Robot(arcade.Sprite):
 
     ## Updates ##
 
+    def _update_dest(self):
+        self.dest_x = self.center_x
+        self.dest_y = self.center_y
+
+    def _check_and_fix_jammed_robot(self):
+        self.jam_check['position_buffer'][self.jam_check['index']] = self.position
+
+        jammed = True
+        for i in range(len(self.jam_check['position_buffer'])):
+            jammed &= manhattan_dist(self.jam_check['position_buffer'][i], self.position) < self.speed
+
+        if jammed:
+            candidate_fixes = [[self.center_x+self.grid_size, self.center_y],
+                               [self.center_x-self.grid_size, self.center_y],
+                               [self.center_x, self.center_y+self.grid_size],
+                               [self.center_x, self.center_y-self.grid_size]]
+            for fix in candidate_fixes:
+                if self._is_position_valid(fix):
+                    self.center_x = fix[0]
+                    self.center_y = fix[1]
+                    self._update_dest()
+                    self.jam_check['position_buffer'][self.jam_check['index']] = self.position
+
+        self.jam_check['index'] = (self.jam_check['index'] + 1) % len(self.jam_check['position_buffer'])
+
     async def _update(self, wifi):
         """ Base robot doesn't move automatically """
 
@@ -220,6 +227,7 @@ class Robot(arcade.Sprite):
             self.position = prev_pos
             self._get_new_path()
             self.dest_x, self.dest_y = self.path.pop(0)
+        self._check_and_fix_jammed_robot()
 
     async def sensor_update(self, obstructions):
         """ Simulate each range finder based on the simulated world """

@@ -16,13 +16,18 @@ class RandomRobot(Robot.Robot):
 
     def distance_to_goal(self):
         # Using Manhattan distance while not using diagonal movement
-        return (abs(self.center_x - self.dest_x) + abs(self.center_y - self.dest_y))
+        return Robot.manhattan_dist([self.center_x, self.center_y], [self.dest_x, self.dest_y])
 
     def _get_new_path(self):
         while self.path == [] or self.path == None:
             dest = self._get_valid_position()
             if arcade.has_line_of_sight(self.position, dest, self.wall_list):
                 self.path = arcade.astar_calculate_path(self.position, dest, self.barrier_list, diagonal_movement = False)
+
+    def _update_dest(self):
+        if self.path == []:
+            self._get_new_path()
+        self.dest_x, self.dest_y = self.path.pop(0)
 
     async def _update(self, wifi):
         """ Update the next target location if needed, the current position, and communication """
@@ -31,9 +36,7 @@ class RandomRobot(Robot.Robot):
         self.timer_steps += 1
 
         if self.distance_to_goal() <= self.speed or self.path == []:
-            if self.path == []:
-                self._get_new_path()
-            self.dest_x, self.dest_y = self.path.pop(0)
+            self._update_dest()
 
         # X and Y diff between the two
         x_diff = self.dest_x - self.center_x
