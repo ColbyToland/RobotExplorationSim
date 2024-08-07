@@ -16,7 +16,8 @@ import random
 import sys
 import yaml
 
-from OccupancyGrid import GridResolution
+from OccupancyGridTypes import GridResolution
+from utils import copy_override_dict, is_valid_key_chain
 
 
 DefaultExplorerConfig = {
@@ -90,28 +91,6 @@ DefaultExplorerConfig = {
 
 hdd_config_file = None
 
-def copy_override_dict(main_dict, override_dict):
-    """ Recursive copying of override values from one dict to another """
-    if override_dict is None:
-        return
-    for key, value in override_dict.items():
-        if key in main_dict:
-            if isinstance(value, dict):
-                copy_override_dict(main_dict[key], override_dict[key])
-            else:
-                main_dict[key] = override_dict[key]
-
-def is_valid_key_chain(config, key_chain):
-    if config is None:
-        return False
-    subconfig = deepcopy(config)
-    for key in key_chain:
-        if key in subconfig:
-            subconfig = subconfig[key]
-        else:
-            return False
-    return True
-
 class ExplorerConfig:
     def __init__(self, fname=None):
         global hdd_config_file
@@ -134,12 +113,6 @@ class ExplorerConfig:
     def grid_size(self):
         drawing_settings = self.drawing_settings()
         return drawing_settings['size']*drawing_settings['scale']
-
-    def max_x(self):
-        return int(map_generator_settings['grid_width'] * self.grid_size())
-
-    def max_y(self):
-        return int(map_generator_settings['grid_height'] * self.grid_size())
  
     def camera_settings(self):
         return hdd_config_file['camera']
@@ -161,6 +134,12 @@ class ExplorerConfig:
             hdd_config_file['simulation']['map_generator']['grid_seed'] = random.randrange(sys.maxsize)
             params['grid_seed'] = hdd_config_file['simulation']['map_generator']['grid_seed']
         return params
+
+    def max_x(self):
+        return int(self.map_generator_settings()['grid_width'] * self.grid_size())
+
+    def max_y(self):
+        return int(self.map_generator_settings()['grid_height'] * self.grid_size())
 
     def robot_type(self):
         return hdd_config_file['simulation']['robot']['type']

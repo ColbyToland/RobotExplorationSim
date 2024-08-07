@@ -17,37 +17,18 @@ import random
 
 from ExplorerConfig import ExplorerConfig
 from LaserRangeFinder import LaserRangeFinder, Measurement
-from OccupancyGrid import GridResolution, OccupancyGrid
+from RobotMessages import OccupancyGridMessage
+from OccupancyGrid import OccupancyGrid
+from OccupancyGridTypes import GridResolution
+from utils import manhattan_dist
 import WiFi
 
 
 TYPE_NAME = "base"
 
 
-class OccupancyGridMessage(WiFi.Message):
-    TYPE = "Occupancy Grid"
-    def __init__(self, sender, bot_name=None, oc_grid=None, timestamp=None, receivers=WiFi.Message.BROADCAST):
-        super().__init__(sender, msg_type = OccupancyGridMessage.TYPE, receivers=receivers)
-        self.bot_name = bot_name
-        self.bot_map = oc_grid
-        self.timestamp = timestamp
-
-    @property
-    def data(self):
-        return (self.bot_name, {'map': self.bot_map, 'timestamp': self.timestamp})
-    
-    @data.setter
-    def data(self, value):
-        self.bot_name = value[0]
-        self.bot_map = value[1]['map']
-        self.timestamp = value[1]['timestamp']
-
-
 # Store the assigned robot names in a global to avoid duplicates
 assigned_robot_names = []
-
-def manhattan_dist(p1, p2):
-    return (abs(p1[0]-p2[0])+abs(p1[1]-p2[1]))
 
 class Robot(arcade.Sprite):
     """ Sprite to simulate a single robot """
@@ -81,12 +62,12 @@ class Robot(arcade.Sprite):
 
         # sensors
         robot_sensor_settings = ExplorerConfig().robot_sensor_settings()
-        self.laser_half_width = robot_sensor_settings['beam_grid_scale']*self.grid_size / 2 + 1
+        self.laser_width = robot_sensor_settings['beam_grid_scale']*self.grid_size + 1 # +1 to avoid potential problems with exactly 1 grid width
         self.range_finders = []
         max_range = robot_sensor_settings['range_grid_scale']*self.grid_size
         for i in range(robot_sensor_settings['count']):
             self.range_finders.append(LaserRangeFinder(self, 
-                                                       self.laser_half_width, 
+                                                       self.laser_width, 
                                                        max_range=max_range,
                                                        orientation=i*2*math.pi/robot_sensor_settings['count']))
 
@@ -145,7 +126,7 @@ class Robot(arcade.Sprite):
         cell_status = self.map.get_cell(next_x, next_y).status()
         return cell_status == GridCellStatus.UNEXPLORED or cell_status == GridCellStatus.CLEAR
 
-    def _get_position(self, test_func)
+    def _get_position(self, test_func):
         """ Randomly select a valid position that meets the test condition """
         next_x = self.center_x
         next_y = self.center_y
@@ -173,6 +154,9 @@ class Robot(arcade.Sprite):
         """ Randomly select a valid position not in the walls """
         return self._get_position(self._is_position_unknown_in_occupancy_grid)
 
+    def _get_new_path():
+        """ This bot doesn't move """
+        pass
 
     ## Communication ##
 

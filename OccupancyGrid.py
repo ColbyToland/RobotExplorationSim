@@ -7,90 +7,15 @@ This effectively rejects spurious observations of transient obstructions while b
 import arcade
 import asyncio
 from datetime import datetime
-from enum import Enum
 import math
 from matplotlib import pyplot as plt
 import numpy as np
 
-from bresenham_line import get_line
+from ExplorerConfig import ExplorerConfig
 from LaserRangeFinder import Measurement
-from MapMaker import WallSprite
-
-
-class GridResolution(Enum):
-    """ Setting to adjsut the model vs real world map complexity """
-    LOW = 0
-    PARITY = 1
-    HIGH = 2
-
-
-class GridCellStatus(Enum):
-    """ Summary description of a cell status """
-    UNEXPLORED = -1
-    CLEAR = 0
-    OBSTACLE = 1
-
-
-# Should this be in the config file? Seems algorithm dependent so opted for simplicity.
-DEFAULT_OBSTACLE_THRESHOLD = 0.5
-
-class GridCell:
-    """ A single cell of the occupancy grid """
-
-    def __init__(self):
-        """ default to UNEXPLORED_CELL """
-        self._obstacles = -1
-        self._observations = -1
-
-    def _observe(self):
-        """ Transition out of UNEXPLORED state """
-        if self.status() == GridCellStatus.UNEXPLORED:
-            self._obstacles = 0
-            self._observations = 0
-
-    def observe(self):
-        """ Increment the observations for this cell """
-        self._observe()
-        self._observations += 1
-
-    def observe_obstacle(self):
-        """ Increment the observations and obstacle observations for this cell """
-        self.observe()
-        self._obstacles += 1
-
-    def status(self, obstacle_threshold=DEFAULT_OBSTACLE_THRESHOLD):
-        """ Convert the obstacle/observation ratio to a state
-
-        obstacle_threshold -- Define the minimum % obstacle observations to be considered an obstacle
-        """
-        if self._observations == -1:
-            return GridCellStatus.UNEXPLORED
-        pct = self._obstacles / self._observations
-        if pct > obstacle_threshold:
-            return GridCellStatus.OBSTACLE 
-        return GridCellStatus.CLEAR
-
-    def copy(self):
-        """ Create an identical GridCell """
-        mirror = GridCell()
-        mirror._obstacles = self._obstacles
-        mirror._observations = self._observations
-        assert self == mirror
-        return mirror
-
-    # Define math and logic operations
-    def __iadd__(self, cell):
-        if cell.status() != GridCellStatus.UNEXPLORED:
-            self._observe()
-            self._observations += cell._observations
-            self._obstacles += cell._obstacles
-        return self
-
-    def __eq__(self, other):
-        return self._obstacles == other._obstacles and self._observations == other._observations
-
-    def __ne__(self, other):
-        return not self.__eq__(other)
+from MapTypes import WallSprite
+from OccupancyGridTypes import GridResolution, GridCellStatus, GridCell, DEFAULT_OBSTACLE_THRESHOLD
+from utils import get_line
 
 
 class OccupancyGrid:
@@ -121,6 +46,9 @@ class OccupancyGrid:
         self._known_walls = {'list': arcade.SpriteList(use_spatial_hash=True), 
                              'map': [[None for _r in range(self.rows)] for _c in range(self.columns)]}
 
+
+    # Convert between x,y and hash indices
+
     def _ind(self, x, y):
         """ Grid index for a given position """
         c = int(math.ceil(max(0, x-self.resolution_scale+1) / self.resolution_scale))
@@ -146,9 +74,8 @@ class OccupancyGrid:
             r = self.rows-1
         return c, r
 
-    def get_cell(self, x, y):
-        c, r = self.map_ind(key[0], key[1])
-        return self.map[c][r].copy()
+
+    # Modify data
 
     def update(self, measurement, valid_distance=1):
         """ Update all grid positions covered by a single range finder laser measurement """
@@ -165,6 +92,54 @@ class OccupancyGrid:
                 self.map[inds[0]][inds[1]].observe_obstacle()
             else:
                 self.map[inds[0]][inds[1]].observe()
+
+    def add_map(self, other_map):
+        """ Merge other occupancy grids into this one """
+        if self.columns != other_map.columns or self.rows != other_map.rows:
+            raise ValueError(f"Dimension mismatch: [{self.columns}, {self.rows}] != [{map.columns}, {map.rows}]")
+        for c in range(self.columns):
+            for r in range(self.rows):
+                self.map[c][r] += other_map.map[c][r]
+
+
+    # Access data
+
+    def get_cell(self, x, y):
+        c, r = self.map_ind(key[0], key[1])
+        return self.map[c][r].copy()
+
+    def _update_known_walls_map(self, obstacle_threshold=DEFAULT_OBSTACLE_THRESHOLD):
+        map_changed = False
+        for c in range(self.columns):
+            for r in range(self.rows):
+                cell_status = self.map[c][r].status(obstacle_threshold)
+                if cell_status == GridCellStatus.OBSTACLE:
+                    if not isinstance(self._known_walls['map'][c][r], WallSprite):
+                        wall = WallSprite()
+                        wall.center_x, wall.center_y = self._position(c, r)
+                        self._known_walls['map'][c][r] = wall
+                        map_changed = True
+                elif isinstance(self._known_walls['map'][c][r], WallSprite):
+                    self._known_walls['map'][c][r] = None
+                    map_changed = True
+        return map_changed
+
+    def _update_known_walls_list(self):
+        self._known_walls['list'] = arcade.SpriteList(use_spatial_hash=True)
+        for c in range(self.columns):
+            for r in range(self.rows):
+                if isinstance(self._known_walls['map'][c][r], WallSprite):
+                    self._known_walls['list'].append(self._known_walls['map'][c][r])
+
+    def get_known_walls(self, obstacle_threshold=DEFAULT_OBSTACLE_THRESHOLD, update=True):
+        """ Return a list of wall sprites at the position of obstructions """
+
+        # The known walls are only updated when this is called and the wall list is
+        # maintained between calls to minimize sprite construction
+        if update and self._update_known_walls_map(DEFAULT_OBSTACLE_THRESHOLD):
+            self._update_known_walls_list()
+
+        return self._known_walls['list']
 
     def save_map(self, name=None, obstacle_threshold=DEFAULT_OBSTACLE_THRESHOLD):
         """ Convert the occupancy grid to an image
@@ -211,44 +186,3 @@ class OccupancyGrid:
             for r in range(self.rows):
                 mirror.map[c][r] = self.map[c][r].copy()
         return mirror
-
-    def add_map(self, other_map):
-        """ Merge other occupancy grids into this one """
-        if self.columns != other_map.columns or self.rows != other_map.rows:
-            raise ValueError(f"Dimension mismatch: [{self.columns}, {self.rows}] != [{map.columns}, {map.rows}]")
-        for c in range(self.columns):
-            for r in range(self.rows):
-                self.map[c][r] += other_map.map[c][r]
-
-    def _update_known_walls_map(self, obstacle_threshold=DEFAULT_OBSTACLE_THRESHOLD):
-        map_changed = False
-        for c in range(self.columns):
-            for r in range(self.rows):
-                cell_status = self.map[c][r].status(obstacle_threshold)
-                if cell_status == GridCellStatus.OBSTACLE:
-                    if not isinstance(self._known_walls['map'][c][r], WallSprite):
-                        wall = WallSprite()
-                        wall.center_x, wall.center_y = self._position(c, r)
-                        self._known_walls['map'][c][r] = wall
-                        map_changed = True
-                elif isinstance(self._known_walls['map'][c][r], WallSprite):
-                    self._known_walls['map'][c][r] = None
-                    map_changed = True
-        return map_changed
-
-    def _update_known_walls_list(self):
-        self._known_walls['list'] = arcade.SpriteList(use_spatial_hash=True)
-        for c in range(self.columns):
-            for r in range(self.rows):
-                if isinstance(self._known_walls['map'][c][r], WallSprite):
-                    self._known_walls['list'].append(self._known_walls['map'][c][r])
-
-    def get_known_walls(self, obstacle_threshold=DEFAULT_OBSTACLE_THRESHOLD):
-        """ Return a list of wall sprites at the position of obstructions """
-
-        # The known walls are only updated when this is called and the wall list is
-        # maintained between calls to minimize sprite construction
-        if self._update_known_walls_map(DEFAULT_OBSTACLE_THRESHOLD):
-            self._update_known_walls_list()
-
-        return self._known_walls['list']

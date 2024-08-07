@@ -16,6 +16,7 @@ import random
 import arcade
 
 from ExplorerConfig import ExplorerConfig
+from MapTypes import WallSprite
 
 
 def create_grid(width, height):
@@ -72,11 +73,6 @@ def do_simulation_step(old_grid):
                 else:
                     new_grid[y][x] = 0
     return new_grid
-
-class WallSprite(arcade.Sprite):
-    """ Sprite for wall obstructions """
-    def __init__(self):
-        super().__init__(":resources:images/tiles/grassCenter.png", ExplorerConfig().drawing_settings()['scale'])
 
 def generate_map():
     # Create cave system using a 2D grid

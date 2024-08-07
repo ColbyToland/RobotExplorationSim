@@ -66,6 +66,7 @@ class GameView(arcade.View):
         self.processing_times = []
 
     def _build_robot(self):
+        """ Call the correct constructor for the desired robot type """
         robot_type = ExplorerConfig().robot_type()
         if robot_type == Robot.TYPE_NAME:
             return Robot.Robot(self.wall_list)
@@ -81,7 +82,7 @@ class GameView(arcade.View):
         self.wifi = WiFi()
 
         # Create cave system using a 2D grid
-        self.grid, self.wall_list = MapMaker.generate_map(ExplorerConfig().drawing_settings()['scale'])
+        self.grid, self.wall_list = MapMaker.generate_map()
 
         # Set up the bots
         self.robot_list = arcade.SpriteList(use_spatial_hash=True)
@@ -165,8 +166,7 @@ class GameView(arcade.View):
         self.draw_time = timeit.default_timer() - draw_start_time
 
     def scroll_to_robot(self, speed):
-        """
-        Scroll the window to the player.
+        """ Scroll the window to the player.
 
         if CAMERA_SPEED is 1, the camera will immediately move to the desired position.
         Anything between 0 and 1 will have the camera move to the location with a smoother
@@ -189,85 +189,14 @@ class GameView(arcade.View):
         self.camera_sprites.update()
 
     def on_resize(self, width, height):
-        """
-        Resize window
+        """ Resize window
+
         Handle the user grabbing the edge and resizing the window.
 
         Note: I've never seen this working. The window size seems locked in spite of resizeable=True in the main function.
         """
         self.camera_sprites.resize(int(width), int(height))
         self.camera_gui.resize(int(width), int(height))
-
-    def save_statistics(self):
-        """ Store numeric statistics for comparing simulations """
-        with open("output/statistics.txt", "w+", encoding="utf-8") as f:
-            seed = ExplorerConfig().map_generator_settings()['grid_seed']
-            f.write(f"Random Seed: {seed}\n")
-            bot_count = len(self.robot_list)
-            f.write(f"Bot Count: {bot_count}\n")
-            sprite_count = len(self.wall_list) + bot_count
-            f.write(f"Sprite Count: {sprite_count}\n")
-            steps = self.timer_steps-1
-            f.write(f"Simulation Steps: {steps}\n")
-
-            f.write("\n")
-            f.write("Note: Draw and processing times of 0 are purged.\n")
-            f.write("\n")
-
-            self.draw_times = [t for t in self.draw_times if t != 0]
-            total_draw_time = 0
-            for t in self.draw_times:
-                total_draw_time += t
-            avg_draw_time = total_draw_time / len(self.draw_times)
-            f.write(f"Average Draw Time: {avg_draw_time}\n")
-            f.write(f"Min Draw Time: {min(self.draw_times)}\n")
-            f.write(f"Max Draw Time: {max(self.draw_times)}\n")
-            f.write(f"Total Draw Time: {total_draw_time}\n")
-
-            self.processing_times = [t for t in self.processing_times if t != 0]
-            total_processing_time = 0
-            for t in self.processing_times:
-                total_processing_time += t
-            avg_processing_time = total_processing_time / len(self.processing_times)
-            f.write(f"Average Processing Time: {avg_processing_time}\n")
-            f.write(f"Min Processing Time: {min(self.processing_times)}\n")
-            f.write(f"Max Processing Time: {max(self.processing_times)}\n")
-            f.write(f"Total Processing Time: {total_processing_time}\n")
-
-            f.write("\n")
-
-            f.write(f"Draw Times: \n{self.draw_times}\n\n")
-            f.write(f"Processing Times: \n{self.processing_times}\n")
-
-    def save_results(self):
-        """ Store any simulation results to files and images """
-        # Without this, save images when the folder doesn't exist crashes
-        os.makedirs("output", exist_ok=True)
-
-        # Save each robot's map constructed from sensor data
-        for i in range(len(self.robot_list)):
-            self.robot_list[i].save_map("output/Map - Robot " + str(i))
-
-        # Save the actual map and robot paths
-        true_map = []
-        for wall_sprite in self.wall_list:
-            true_map.append(wall_sprite.position)
-        true_map = np.array(true_map).T
-        fig = plt.figure()
-        plt.plot(true_map[:][0], true_map[:][1], '.')
-        for i in range(len(self.bot_paths)):
-            new_path = np.array(self.bot_paths[i]).T
-            plt.plot(new_path[:][0], new_path[:][1])
-            plt.plot(self.robot_list[i].center_x, self.robot_list[i].center_y, '^')
-
-        plt.axis((0, ExplorerConfig().max_x(), 0, ExplorerConfig().max_y()))
-        plt.savefig("output/true_map")
-        plt.close(fig)
-
-        with open("output/config.yaml", "w+", encoding="utf-8") as f:
-            f.write(str(ExplorerConfig()))
-
-        self.save_statistics()
 
     def on_update(self, delta_time):
         """ Movement and game logic """
@@ -339,3 +268,75 @@ class GameView(arcade.View):
 
         # Save the time it took to do this.
         self.processing_time = timeit.default_timer() - start_time
+
+    def save_statistics(self):
+        """ Store numeric statistics for comparing simulations """
+        with open("output/statistics.txt", "w+", encoding="utf-8") as f:
+            seed = ExplorerConfig().map_generator_settings()['grid_seed']
+            f.write(f"Random Seed: {seed}\n")
+            bot_count = len(self.robot_list)
+            f.write(f"Bot Count: {bot_count}\n")
+            sprite_count = len(self.wall_list) + bot_count
+            f.write(f"Sprite Count: {sprite_count}\n")
+            steps = self.timer_steps-1
+            f.write(f"Simulation Steps: {steps}\n")
+
+            f.write("\n")
+            f.write("Note: Draw and processing times of 0 are purged.\n")
+            f.write("\n")
+
+            self.draw_times = [t for t in self.draw_times if t != 0]
+            total_draw_time = 0
+            for t in self.draw_times:
+                total_draw_time += t
+            avg_draw_time = total_draw_time / len(self.draw_times)
+            f.write(f"Average Draw Time: {avg_draw_time}\n")
+            f.write(f"Min Draw Time: {min(self.draw_times)}\n")
+            f.write(f"Max Draw Time: {max(self.draw_times)}\n")
+            f.write(f"Total Draw Time: {total_draw_time}\n")
+
+            self.processing_times = [t for t in self.processing_times if t != 0]
+            total_processing_time = 0
+            for t in self.processing_times:
+                total_processing_time += t
+            avg_processing_time = total_processing_time / len(self.processing_times)
+            f.write(f"Average Processing Time: {avg_processing_time}\n")
+            f.write(f"Min Processing Time: {min(self.processing_times)}\n")
+            f.write(f"Max Processing Time: {max(self.processing_times)}\n")
+            f.write(f"Total Processing Time: {total_processing_time}\n")
+
+            f.write("\n")
+
+            f.write(f"Draw Times: \n{self.draw_times}\n\n")
+            f.write(f"Processing Times: \n{self.processing_times}\n")
+
+    def save_results(self):
+        """ Store any simulation results to files and images """
+
+        # Without this, save images when the folder doesn't exist crashes
+        os.makedirs("output", exist_ok=True)
+
+        # Save each robot's map constructed from sensor data
+        for i in range(len(self.robot_list)):
+            self.robot_list[i].save_map("output/Map - Robot " + str(i))
+
+        # Save the actual map and robot paths
+        true_map = []
+        for wall_sprite in self.wall_list:
+            true_map.append(wall_sprite.position)
+        true_map = np.array(true_map).T
+        fig = plt.figure()
+        plt.plot(true_map[:][0], true_map[:][1], '.')
+        for i in range(len(self.bot_paths)):
+            new_path = np.array(self.bot_paths[i]).T
+            plt.plot(new_path[:][0], new_path[:][1])
+            plt.plot(self.robot_list[i].center_x, self.robot_list[i].center_y, '^')
+
+        plt.axis((0, ExplorerConfig().max_x(), 0, ExplorerConfig().max_y()))
+        plt.savefig("output/true_map")
+        plt.close(fig)
+
+        with open("output/config.yaml", "w+", encoding="utf-8") as f:
+            f.write(str(ExplorerConfig()))
+
+        self.save_statistics()
