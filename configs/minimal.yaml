@@ -1,7 +1,7 @@
 simulation:
   bot_count: 5
-  sim_steps: 30
-  use_async: false
+  sim_steps: 200
+#  use_async: false
   map_generator:
     grid_seed: 1599335621182662412
   robot:

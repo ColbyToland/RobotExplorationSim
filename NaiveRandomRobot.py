@@ -34,8 +34,10 @@ class NaiveRandomRobot(Robot.Robot):
             if arcade.has_line_of_sight(self.position, dest, known_walls):
                 self.path = arcade.astar_calculate_path(self.position, dest, known_barrier_list, diagonal_movement = False)
 
-    def _check_next_path_segment(self, update_obstructions=False):
+    def _is_next_path_segment_blocked(self, update_obstructions=False):
         """ Verify the current trajectory is clear based on the occupancy grid """
+        if self.center_x == self.dest_x and self.center_y == self.dest_y:
+            return False
         collision_checker = LineSegmentCollisionDetector()
         collision_checker.setup_pts(self.position, [self.dest_x, self.dest_y])
         known_walls = self.map.get_known_walls(update=update_obstructions)
@@ -62,7 +64,7 @@ class NaiveRandomRobot(Robot.Robot):
         self.dest_x, self.dest_y = self.path.pop(0)
 
         # Make sure we don't see an obstruction
-        while self._check_next_path_segment(update_obstructions):
+        while self._is_next_path_segment_blocked(update_obstructions):
             update_obstructions = False
             if attempts < MAX_ATTEMPTS_PER_SIM_STEP:
                 self._get_new_path(update_obstructions)
@@ -83,7 +85,7 @@ class NaiveRandomRobot(Robot.Robot):
         # Update internal clock
         self.timer_steps += 1
 
-        if self.distance_to_goal() <= self.speed or self.path == [] or self._check_next_path_segment(update_obstructions=True):
+        if self.distance_to_goal() <= self.speed or self.path == [] or self._is_next_path_segment_blocked(update_obstructions=True):
             # If we're too close to the target or the new sensor data tells us the next target is unreachable then update the target destination
             self._update_dest()
 

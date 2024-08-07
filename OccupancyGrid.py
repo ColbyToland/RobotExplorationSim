@@ -14,7 +14,7 @@ import numpy as np
 from ExplorerConfig import ExplorerConfig
 from LaserRangeFinder import Measurement
 from MapTypes import WallSprite
-from OccupancyGridTypes import GridResolution, GridCellStatus, GridCell, DEFAULT_OBSTACLE_THRESHOLD
+from OccupancyGridTypes import DEFAULT_OBSTACLE_THRESHOLD, GridCell, GridCellStatus, GridResolution 
 from utils import get_line
 
 
@@ -105,7 +105,7 @@ class OccupancyGrid:
     # Access data
 
     def get_cell(self, x, y):
-        c, r = self.map_ind(key[0], key[1])
+        c, r = self.map_ind(x, y)
         return self.map[c][r].copy()
 
     def _update_known_walls_map(self, obstacle_threshold=DEFAULT_OBSTACLE_THRESHOLD):

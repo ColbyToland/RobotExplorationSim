@@ -19,12 +19,11 @@ from ExplorerConfig import ExplorerConfig
 from MapTypes import WallSprite
 
 
-def create_grid(width, height):
+def _create_grid(width, height):
     """ Create a two-dimensional grid of specified size. """
     return [[0 for _x in range(width)] for _y in range(height)]
 
-
-def initialize_grid(grid):
+def _initialize_grid(grid):
     """ Randomly set grid locations to on/off based on chance. """
     height = len(grid)
     width = len(grid[0])
@@ -33,8 +32,7 @@ def initialize_grid(grid):
             if random.random() <= ExplorerConfig().map_generator_settings()['cellular']['start_alive_chance']:
                 grid[row][column] = 1
 
-
-def count_alive_neighbors(grid, x, y):
+def _count_alive_neighbors(grid, x, y):
     """ Count neighbors that are alive. """
     height = len(grid)
     width = len(grid[0])
@@ -52,16 +50,15 @@ def count_alive_neighbors(grid, x, y):
                 alive_count += 1
     return alive_count
 
-
-def do_simulation_step(old_grid):
+def _do_simulation_step(old_grid):
     """ Run a step of the cellular automaton. """
     height = len(old_grid)
     width = len(old_grid[0])
-    new_grid = create_grid(width, height)
+    new_grid = _create_grid(width, height)
     cellular_settings = ExplorerConfig().map_generator_settings()['cellular']
     for x in range(width):
         for y in range(height):
-            alive_neighbors = count_alive_neighbors(old_grid, x, y)
+            alive_neighbors = _count_alive_neighbors(old_grid, x, y)
             if old_grid[y][x] == 1:
                 if alive_neighbors < cellular_settings['death_limit']:
                     new_grid[y][x] = 0
@@ -77,10 +74,10 @@ def do_simulation_step(old_grid):
 def generate_map():
     # Create cave system using a 2D grid
     map_generator_settings = ExplorerConfig().map_generator_settings()
-    grid = create_grid(map_generator_settings['grid_width'], map_generator_settings['grid_height'])
-    initialize_grid(grid)
+    grid = _create_grid(map_generator_settings['grid_width'], map_generator_settings['grid_height'])
+    _initialize_grid(grid)
     for step in range(map_generator_settings['cellular']['steps']):
-        grid = do_simulation_step(grid)
+        grid = _do_simulation_step(grid)
 
     # Create sprites based on 2D grid
     # Each grid location is a sprite.

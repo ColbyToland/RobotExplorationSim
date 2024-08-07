@@ -19,7 +19,7 @@ from ExplorerConfig import ExplorerConfig
 from LaserRangeFinder import LaserRangeFinder, Measurement
 from RobotMessages import OccupancyGridMessage
 from OccupancyGrid import OccupancyGrid
-from OccupancyGridTypes import GridResolution
+from OccupancyGridTypes import GridCellStatus, GridResolution
 from utils import manhattan_dist
 import WiFi
 
@@ -119,11 +119,11 @@ class Robot(arcade.Sprite):
         return len(walls_hit) == 0
 
     def _is_position_valid_in_occupancy_grid(self, pos):
-        cell_status = self.map.get_cell(next_x, next_y).status()
+        cell_status = self.map.get_cell(pos[0], pos[1]).status()
         return cell_status == GridCellStatus.UNEXPLORED or cell_status == GridCellStatus.CLEAR
 
     def _is_position_unknown_in_occupancy_grid(self, pos):
-        cell_status = self.map.get_cell(next_x, next_y).status()
+        cell_status = self.map.get_cell(pos[0], pos[1]).status()
         return cell_status == GridCellStatus.UNEXPLORED or cell_status == GridCellStatus.CLEAR
 
     def _get_position(self, test_func):

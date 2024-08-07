@@ -2,6 +2,7 @@
 Utility functions and classes for the project
 """
 
+from copy import deepcopy
 import math
 import numpy as np
 
@@ -18,6 +19,10 @@ def pt_distance(p1, p2):
 
 def line_pt_distance(l1, l2, p):
     """ Perpendicular distance between a point and a line """
+    if l1[0] == l2[0] and l1[1] == l2[1]:
+        raise ValueError(f"Point line distance called with two points: {l1} {l2} {p}")
+    if pt_distance(l1, l2) < 1:
+        print(f"{l1} {l2} {p}")
     l1 = np.array(l1)
     l2 = np.array(l2)
     p = np.array(p)
