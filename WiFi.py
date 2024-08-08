@@ -8,11 +8,13 @@ import numpy as np
 from typing import Any
 
 
+type ReceiverList = list[str]
+
 class Message:
     """ Base class for all messages """
     BROADCAST = []
 
-    def __init__(self, sender: arcade.Sprite, msg_type: str='Base', data: Any=None, receivers: list[str]=BROADCAST):
+    def __init__(self, sender: arcade.Sprite, msg_type: str='Base', data: Any=None, receivers: ReceiverList=BROADCAST):
         self.sender_id = sender.name
         self.sender_position = sender.position
         self.transmission_range = sender.comm_range

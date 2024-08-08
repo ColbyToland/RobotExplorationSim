@@ -5,17 +5,17 @@ This effectively rejects spurious observations of transient obstructions while b
 """
 
 import arcade
-import asyncio
 from datetime import datetime
 import math
 from matplotlib import pyplot as plt
 import numpy as np
+from typing import Optional, Self
 
 from ExplorerConfig import ExplorerConfig
 from LaserRangeFinder import Measurement
 from MapTypes import WallSprite
 from OccupancyGridTypes import DEFAULT_OBSTACLE_THRESHOLD, GridCell, GridCellStatus, GridResolution 
-from utils import get_line
+from utils import fTuplePt2, get_line, iTuplePt2
 
 
 class OccupancyGrid:
@@ -49,19 +49,19 @@ class OccupancyGrid:
 
     # Convert between x,y and hash indices
 
-    def _ind(self, x, y):
+    def _ind(self, x: float, y: float) -> iTuplePt2:
         """ Grid index for a given position """
         c = int(math.ceil(max(0, x-self.resolution_scale+1) / self.resolution_scale))
         r = int(math.ceil(max(0, y-self.resolution_scale+1) / self.resolution_scale))
         return c, r
 
-    def _position(self, c, r):
+    def _position(self, c: int, r: int) -> fTuplePt2:
         """ Center of the indexed grid square """
         x = c*self.resolution_scale+self.resolution_scale/2
         y = r*self.resolution_scale+self.resolution_scale/2
         return x, y
 
-    def map_ind(self, x, y):
+    def map_ind(self, x: float, y: float) -> iTuplePt2:
         """ Bounded grid index for a given position """
         c, r = self._ind(x, y)
         if c < 0:
@@ -77,23 +77,23 @@ class OccupancyGrid:
 
     # Modify data
 
-    def update(self, measurement, valid_distance=1):
+    def update(self, m: Measurement, valid_distance: float=1):
         """ Update all grid positions covered by a single range finder laser measurement """
-        endpoint = measurement.estimation(valid_distance)
+        endpoint = m.estimation(valid_distance)
         if not endpoint:
             # Update observations along the full length of the laser
-            endpoint = measurement.ray()
-        start_inds = self.map_ind(measurement.position[0], measurement.position[1])
+            endpoint = m.ray()
+        start_inds = self.map_ind(m.position[0], m.position[1])
         end_inds = self.map_ind(endpoint[0], endpoint[1])
         line_inds = get_line(start_inds, end_inds)
         for inds in line_inds:
             # Increment all grid cell observations and potentially one obstacle observation
-            if inds == end_inds and measurement.dist != measurement.NONE:
+            if inds == end_inds and m.dist != m.NONE:
                 self.map[inds[0]][inds[1]].observe_obstacle()
             else:
                 self.map[inds[0]][inds[1]].observe()
 
-    def add_map(self, other_map):
+    def add_map(self, other_map: Self):
         """ Merge other occupancy grids into this one """
         if self.columns != other_map.columns or self.rows != other_map.rows:
             raise ValueError(f"Dimension mismatch: [{self.columns}, {self.rows}] != [{map.columns}, {map.rows}]")
@@ -104,11 +104,11 @@ class OccupancyGrid:
 
     # Access data
 
-    def get_cell(self, x, y):
+    def get_cell(self, x: float, y: float) -> GridCell:
         c, r = self.map_ind(x, y)
         return self.map[c][r].copy()
 
-    def _update_known_walls_map(self, obstacle_threshold=DEFAULT_OBSTACLE_THRESHOLD):
+    def _update_known_walls_map(self, obstacle_threshold: float=DEFAULT_OBSTACLE_THRESHOLD) -> bool:
         map_changed = False
         for c in range(self.columns):
             for r in range(self.rows):
@@ -131,7 +131,7 @@ class OccupancyGrid:
                 if isinstance(self._known_walls['map'][c][r], WallSprite):
                     self._known_walls['list'].append(self._known_walls['map'][c][r])
 
-    def get_known_walls(self, obstacle_threshold=DEFAULT_OBSTACLE_THRESHOLD, update=True):
+    def get_known_walls(self, obstacle_threshold: float=DEFAULT_OBSTACLE_THRESHOLD, update: bool=True) -> arcade.SpriteList:
         """ Return a list of wall sprites at the position of obstructions """
 
         # The known walls are only updated when this is called and the wall list is
@@ -141,7 +141,7 @@ class OccupancyGrid:
 
         return self._known_walls['list']
 
-    def save_map(self, name=None, obstacle_threshold=DEFAULT_OBSTACLE_THRESHOLD):
+    def save_map(self, name: Optional[str]=None, obstacle_threshold: float=DEFAULT_OBSTACLE_THRESHOLD):
         """ Convert the occupancy grid to an image
 
         name -- desired filename
@@ -179,7 +179,7 @@ class OccupancyGrid:
         plt.savefig(name)
         plt.close(fig)
 
-    def copy(self):
+    def copy(self) -> Self:
         """ Create an identical occupancy grid """
         mirror = OccupancyGrid()
         for c in range(self.columns):

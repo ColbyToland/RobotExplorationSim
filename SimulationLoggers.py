@@ -5,7 +5,6 @@ Implement the loggers used throughout the simulation
 import logging
 from pythonjsonlogger import jsonlogger
 import sys
-from traceback import print_tb
 from typing import Optional
 
 from ExplorerConfig import ExplorerConfig

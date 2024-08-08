@@ -260,7 +260,7 @@ class GameView(arcade.View):
         async def async_sensor_update():
             async with asyncio.TaskGroup() as tg:
                 for robot_sprite in self.robot_list:
-                    task = tg.create_task(robot_sprite.sensor_update([self.wall_list, self.robot_list]))
+                    tg.create_task(robot_sprite.sensor_update([self.wall_list, self.robot_list]))
         async def sync_sensor_update(a_sprite):
             await a_sprite.sensor_update([self.wall_list, self.robot_list])
 

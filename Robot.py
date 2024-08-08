@@ -11,15 +11,14 @@ Responsibilities:
 import arcade
 import asyncio
 from datetime import datetime
-from enum import Enum
 import math
 import random
 
 from ExplorerConfig import ExplorerConfig
-from LaserRangeFinder import LaserRangeFinder, Measurement
+from LaserRangeFinder import LaserRangeFinder
 from RobotMessages import OccupancyGridMessage
 from OccupancyGrid import OccupancyGrid
-from OccupancyGridTypes import GridResolution, GridCellStatus
+from OccupancyGridTypes import GridCellStatus
 from SimulationLoggers import RobotLogger, setup_robot_logger
 from types import FunctionType
 from typing import Optional
@@ -178,7 +177,7 @@ class Robot(arcade.Sprite):
 
     def _add_partner_map(self, bot_name: str, partner_map: OccupancyGrid, timestamp: int):
         """ Accept map data for any other bot so long as it's newer than what is currently held """
-        if not bot_name in self.partner_maps or timestamp > self.partner_maps[bot_name]['timestamp']:
+        if bot_name not in self.partner_maps or timestamp > self.partner_maps[bot_name]['timestamp']:
             self.partner_maps[bot_name] = {'timestamp': timestamp, 'map': partner_map.copy()}
 
     async def rcv_msg(self, msg: WiFi.Message):

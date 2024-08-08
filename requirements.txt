@@ -20,5 +20,6 @@ python-dateutil==2.9.0.post0
 python-json-logger==2.0.7
 pytiled-parser==2.2.0
 PyYAML==6.0.1
+ruff==0.5.7
 six==1.16.0
 typing_extensions==4.12.2

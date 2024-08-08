@@ -6,6 +6,7 @@ import arcade
 import math
 
 import Robot
+import WiFi
 
 
 TYPE_NAME = "random"
@@ -14,13 +15,13 @@ TYPE_NAME = "random"
 class RandomRobot(Robot.Robot):
     """ Path planning done by random destination selection and A* """
 
-    def distance_to_goal(self):
+    def distance_to_goal(self) -> float:
         """ Using Manhattan distance while not using diagonal movement """
         return Robot.manhattan_dist([self.center_x, self.center_y], [self.dest_x, self.dest_y])
 
     def _get_new_path(self):
         """ Find a path to a random reachable location """
-        while self.path == [] or self.path == None:
+        while self.path == [] or self.path is None:
             dest = self._get_valid_position()
             if arcade.has_line_of_sight(self.position, dest, self.wall_list):
                 self.path = arcade.astar_calculate_path(self.position, dest, self.barrier_list, diagonal_movement = False)
@@ -31,7 +32,7 @@ class RandomRobot(Robot.Robot):
             self._get_new_path()
         self.dest_x, self.dest_y = self.path.pop(0)
 
-    async def _update(self, wifi):
+    async def _update(self, wifi: WiFi.WiFi):
         """ Update the next target location if needed, the current position, and communication """
 
         self.timer_steps += 1

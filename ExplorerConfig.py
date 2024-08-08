@@ -17,6 +17,7 @@ import sys
 import yaml
 
 from OccupancyGridTypes import GridResolution
+from typing import Optional
 from utils import copy_override_dict, is_valid_key_chain
 
 
@@ -101,12 +102,12 @@ class ExplorerConfig:
         if hdd_config_file is None:
             hdd_config_file = deepcopy(DefaultExplorerConfig)
 
-    def set_config(self, fname):
+    def set_config(self, fname: Optional[str]):
         global hdd_config_file
         global unrecognized_settings
         if hdd_config_file is None:
             hdd_config_file = deepcopy(DefaultExplorerConfig)
-        if not fname is None:
+        if fname is not None:
             with open(fname, 'r') as file:
                 override_config = yaml.safe_load(file)
                 if is_valid_key_chain(override_config, ['simulation', 'map_generator', 'grid_seed']) and override_config['simulation']['map_generator']['grid_seed']:
@@ -115,48 +116,48 @@ class ExplorerConfig:
                     hdd_config_file['simulation']['async_physics'] = False
                 unrecognized_settings = copy_override_dict(hdd_config_file, override_config)
 
-    def unrecognized_user_settings(self):
+    def unrecognized_user_settings(self) -> dict:
         return unrecognized_settings
 
-    def unrecognized_user_settings_as_str(self):
+    def unrecognized_user_settings_as_str(self) -> str:
         return yaml.dump(deepcopy(unrecognized_settings))
 
-    def window_settings(self):
+    def window_settings(self) -> dict:
         return hdd_config_file['window']
 
-    def drawing_settings(self):
+    def drawing_settings(self) -> dict:
         return hdd_config_file['drawing']
 
-    def grid_size(self):
+    def grid_size(self) -> float:
         drawing_settings = self.drawing_settings()
         return drawing_settings['size']*drawing_settings['scale']
  
-    def camera_settings(self):
+    def camera_settings(self) -> dict:
         return hdd_config_file['camera']
 
-    def output_dir(self):
+    def output_dir(self) -> str:
         return hdd_config_file['simulation']['output_dir']
 
-    def log_file(self, fname=None):
-        if not fname is None:
+    def log_file(self, fname: Optional[str]=None) -> str:
+        if fname is not None:
             # Set it here in case another class wants to create additional logs based on the main log name
             hdd_config_file['simulation']['log_file'] = fname
         return hdd_config_file['simulation']['output_dir'] + "/" + hdd_config_file['simulation']['log_file']
 
-    def split_out_bot_logs(self):
+    def split_out_bot_logs(self) -> bool:
         return hdd_config_file['simulation']['split_out_bot_logs']
 
-    def bot_count(self):
+    def bot_count(self) -> int:
         return hdd_config_file['simulation']['bot_count']
 
-    def sim_steps(self):
+    def sim_steps(self) -> int:
         return hdd_config_file['simulation']['sim_steps']
 
-    def async_params(self):
+    def async_params(self) -> dict:
         return {'use_async': hdd_config_file['simulation']['use_async'], 
                 'async_physics': hdd_config_file['simulation']['async_physics']}
 
-    def map_generator_settings(self):
+    def map_generator_settings(self) -> dict:
         params = deepcopy(hdd_config_file['simulation']['map_generator'])
         if params['grid_seed'] is None:
             # Set a random seed to the random library and store it so we can reproduce this run in the future
@@ -164,16 +165,16 @@ class ExplorerConfig:
             params['grid_seed'] = hdd_config_file['simulation']['map_generator']['grid_seed']
         return params
 
-    def max_x(self):
+    def max_x(self) -> int:
         return int(self.map_generator_settings()['grid_width'] * self.grid_size())
 
-    def max_y(self):
+    def max_y(self) -> int:
         return int(self.map_generator_settings()['grid_height'] * self.grid_size())
 
-    def robot_type(self):
+    def robot_type(self) -> str:
         return hdd_config_file['simulation']['robot']['type']
 
-    def robot_map_resolution(self):
+    def robot_map_resolution(self) -> GridResolution:
         rez_name =  hdd_config_file['simulation']['robot']['map_resolution'].casefold().strip()
         if rez_name == 'parity':
             return GridResolution.PARITY
@@ -183,14 +184,14 @@ class ExplorerConfig:
             return GridResolution.HIGH
         raise ValueError(f"Invalid resolution type: {rez_name}")
 
-    def robot_sensor_settings(self):
+    def robot_sensor_settings(self) -> dict:
         return deepcopy(hdd_config_file['simulation']['robot']['sensor'])
 
-    def robot_comm_settings(self):
+    def robot_comm_settings(self) -> dict:
         return deepcopy(hdd_config_file['simulation']['robot']['comms'])
 
-    def robot_name_gen_parameters(self):
+    def robot_name_gen_parameters(self) -> list[list[str]]:
         return deepcopy(hdd_config_file['simulation']['robot']['name_generator'])
 
-    def __str__(self):
+    def __str__(self) -> str:
         return yaml.dump(deepcopy(hdd_config_file))

@@ -190,8 +190,7 @@ class LineSegmentCollisionDetector:
         line_ind_offset = (origin_hash[0]-line_bucket_inds['start'][0], origin_hash[1]-line_bucket_inds['start'][1])
 
         # iterate over the line buckets
-        #close_by_sprites: set[arcade.Sprite] = set()
-        close_by_sprites: set[SpriteType] = set()
+        close_by_sprites: set[arcade.Sprite] = set()
         for b in line_bucket_inds['line']:
             new_items = spatial_hash.contents.setdefault((b[0]+line_ind_offset[0], b[1]+line_ind_offset[1]), [])
             close_by_sprites.update(new_items)
