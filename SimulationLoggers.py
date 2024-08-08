@@ -11,6 +11,8 @@ from typing import Optional
 from ExplorerConfig import ExplorerConfig
 
 
+sys_excepthook = sys.excepthook
+
 SIM_LOGGER_NAME = "SimulationLogger"
 
 def setup_logger(logger: logging.Logger, fname: str):
@@ -27,6 +29,16 @@ def setup_logger(logger: logging.Logger, fname: str):
     logger.addHandler(logHandler)
     logger.setLevel(logging.DEBUG)
 
+def handle_exception(exc_type, exc_value, exc_traceback):
+    if issubclass(exc_type, KeyboardInterrupt):
+        sys.__excepthook__(exc_type, exc_value, exc_traceback)
+        return
+
+    # BUG: This does not seem to log all the exception when the error happens inside of an async process
+    SimLogger().critical("Uncaught exception", exc_info=(exc_type, exc_value, exc_traceback))
+
+    # Call original
+    sys_excepthook(exc_type, exc_value, exc_traceback)
 
 def setup_sim_logger(fname: Optional[str]):
     """ Setup the logger for simulation level events """
@@ -36,17 +48,6 @@ def setup_sim_logger(fname: Optional[str]):
 
 def SimLogger() -> logging.Logger:
     return logging.getLogger(SIM_LOGGER_NAME)
-
-def handle_exception(exc_type, exc_value, exc_traceback):
-    if issubclass(exc_type, KeyboardInterrupt):
-        sys.__excepthook__(exc_type, exc_value, exc_traceback)
-        return
-
-    SimLogger().critical("Uncaught exception", exc_info=(exc_type, exc_value, exc_traceback))
-
-    print("Traceback:")
-    print_tb(exc_traceback)
-    print(exc_type.__name__ + ": " + str(exc_value))
 
 
 logging_robot_count = 0

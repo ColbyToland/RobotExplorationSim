@@ -5,13 +5,14 @@ Handle sending messages between bots.
 import arcade
 import asyncio
 import numpy as np
+from typing import Any
 
 
 class Message:
     """ Base class for all messages """
     BROADCAST = []
 
-    def __init__(self, sender: arcade.Sprite, msg_type: str='Base', data=None, receivers: list[str]=BROADCAST):
+    def __init__(self, sender: arcade.Sprite, msg_type: str='Base', data: Any=None, receivers: list[str]=BROADCAST):
         self.sender_id = sender.name
         self.sender_position = sender.position
         self.transmission_range = sender.comm_range
@@ -27,7 +28,7 @@ class Message:
         return d <= self.transmission_range and d <= receiver.comm_range
 
     @property
-    def data(self):
+    def data(self) -> Any:
         return self._data
     
     @data.setter

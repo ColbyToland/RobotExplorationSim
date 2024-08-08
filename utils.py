@@ -2,23 +2,31 @@
 Utility functions and classes for the project
 """
 
+import arcade
 from copy import deepcopy
 import math
 import numpy as np
+from typing import Optional, Union
 
 
 # Geometry tools
 # TODO: If any exist in arcade then consider replacing this version with that one
 
-def manhattan_dist(p1, p2):
+type ListPt = list[float]
+type fTuplePt2 = tuple[float, float]
+type iTuplePt2 = tuple[int, int]
+type PtType = Union[ListPt, fTuplePt2, np.array]
+type BoxType = Union[list[float], tuple[float, float, float, float]]
+
+def manhattan_dist(p1: PtType, p2: PtType) -> float:
     return (abs(p1[0]-p2[0])+abs(p1[1]-p2[1]))
 
-def pt_distance(p1, p2):
+def pt_distance(p1: PtType, p2: PtType) -> float:
     p1 = np.array(p1)
     p2 = np.array(p2)
     return float(np.linalg.norm(p1-p2))
 
-def line_pt_distance(l1, l2, p):
+def line_pt_distance(l1: PtType, l2: PtType, p: PtType) -> float:
     """ Perpendicular distance between a point and a line """
     if l1[0] == l2[0] and l1[1] == l2[1]:
         raise ValueError(f"Point line distance called with two points: {l1} {l2} {p}")
@@ -29,22 +37,22 @@ def line_pt_distance(l1, l2, p):
     p = np.array(p)
     return float(np.linalg.norm(np.cross(l2-l1, l1-p))/np.linalg.norm(l2-l1))
 
-def ray(start_pt, end_pt):
+def ray(start_pt: PtType, end_pt: PtType) -> PtType:
     return [end_pt[0]-start_pt[0], end_pt[1]-start_pt[1]]
 
-def cartesian_to_polar(start_pt, end_pt):
+def cartesian_to_polar(start_pt: PtType, end_pt: PtType) -> PtType:
     r = pt_distance(start_pt, end_pt)
     pt_ray = ray(start_pt, end_pt)
     theta = float(np.arctan2(pt_ray[1], pt_ray[0]))
     return r, theta
 
-def polar_to_cartesian(length, orientation):
-    return [length*math.cos(orientation), length*math.sin(orientation)]
+def polar_to_cartesian(length: float, orientation: float) -> fTuplePt2:
+   return (length*math.cos(orientation), length*math.sin(orientation))
 
-def is_point_in_box(pt, box):
+def is_point_in_box(pt: PtType, box: BoxType) -> bool:
     return pt[0] >= box[0] and pt[0] <= box[1] and pt[1] >= box[2] and pt[1] <= box[3]
 
-def line_intersection(p1, p2, p3, p4):
+def line_intersection(p1: PtType, p2: PtType, p3: PtType, p4: PtType) -> bool:
     """ Based on https://en.wikipedia.org/wiki/Line-line_intersection section "Given two points on each line segment" """
     # using the formula for t = n/d then testing 0 <= t <= 1 becomes 
     # n <= d if d and n are positive or 
@@ -58,7 +66,7 @@ def line_intersection(p1, p2, p3, p4):
         return True
     return False
 
-def line_box_intersection(start_pt, end_pt, box_center, box_w, box_h):
+def line_box_intersection(start_pt: PtType, end_pt: PtType, box_center: PtType, box_w: float, box_h: float) -> bool:
     """ Checks for a line-line intersection with each side of a box """
     left = box_center[0] - box_w/2.
     right = box_center[0] + box_w/2.
@@ -78,7 +86,7 @@ def line_box_intersection(start_pt, end_pt, box_center, box_w, box_h):
         return True
     return False
 
-def get_line(start, end):
+def get_line(start: PtType, end: PtType) -> list[iTuplePt2]:
     """Bresenham's Line Algorithm
 
     Downloaded from https://github.com/Azrood/python-bresenham
@@ -147,24 +155,24 @@ class LineSegmentCollisionDetector:
     def __init__(self):
         self.hash_lines = {}
 
-    def setup_polar(self, start_pt, length, orientation):
+    def setup_polar(self, start_pt: PtType, length: float, orientation: float):
         self.start_pt = start_pt
         self.orientation = orientation
         self.length = length
         self.ray = polar_to_cartesian(self.length, self.orientation)
 
-    def setup_pts(self, start_pt, end_pt):
+    def setup_pts(self, start_pt: PtType, end_pt: PtType):
         self.start_pt = start_pt
         self.length, self.orientation = cartesian_to_polar(start_pt, end_pt)
         self.ray = ray(start_pt, end_pt)
 
-    def endpoint(self, start=None):
+    def endpoint(self, start: Optional[PtType]) -> fTuplePt2:
         """ Furthest point the laser can reach and be reflected """
         if start is None:
             start = self.start_pt
-        return [start[0]+self.ray[0], start[1]+self.ray[1]]
+        return (start[0]+self.ray[0], start[1]+self.ray[1])
 
-    def _bresenham_line_hash_lookup(self, spatial_hash, origin=None):
+    def _bresenham_line_hash_lookup(self, spatial_hash, origin: Optional[PtType]=None) -> set[arcade.Sprite]:
         """ Use bresenham line drawing algorithm to identify relevant bucket indices """
         if origin is None:
             origin = self.start_pt
@@ -182,13 +190,14 @@ class LineSegmentCollisionDetector:
         line_ind_offset = (origin_hash[0]-line_bucket_inds['start'][0], origin_hash[1]-line_bucket_inds['start'][1])
 
         # iterate over the line buckets
+        #close_by_sprites: set[arcade.Sprite] = set()
         close_by_sprites: set[SpriteType] = set()
         for b in line_bucket_inds['line']:
             new_items = spatial_hash.contents.setdefault((b[0]+line_ind_offset[0], b[1]+line_ind_offset[1]), [])
             close_by_sprites.update(new_items)
         return close_by_sprites
 
-    def detect_collisions(self, line_width, obstructions, origin=None):
+    def detect_collisions(self, line_width: float, obstructions: list[arcade.SpriteList], origin: Optional[PtType]=None) -> tuple[bool, Optional[arcade.Sprite], float]:
         """ Find nearest collision along a line segment """
         if origin is None:
             origin = self.start_pt
@@ -222,7 +231,7 @@ class LineSegmentCollisionDetector:
 
 # Dictionary tools
 
-def copy_override_dict(main_dict, override_dict):
+def copy_override_dict(main_dict: dict, override_dict: dict) -> dict:
     """ Recursive copying of override values from one dict to another """
     if override_dict is None:
         return
@@ -239,7 +248,7 @@ def copy_override_dict(main_dict, override_dict):
             invalid_overrides[key] = deepcopy(override_dict[key])
     return invalid_overrides
 
-def is_valid_key_chain(config, key_chain):
+def is_valid_key_chain(config: dict, key_chain: list[str]) -> bool:
     """ Check a sequence of keys exist in a nested dictionary """
     if config is None:
         return False
