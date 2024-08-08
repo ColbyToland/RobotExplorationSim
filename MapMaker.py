@@ -18,12 +18,13 @@ import arcade
 from ExplorerConfig import ExplorerConfig
 from MapTypes import WallSprite
 
+type GridType = list[list[int]]
 
-def _create_grid(width, height):
+def _create_grid(width: int, height: int) -> GridType:
     """ Create a two-dimensional grid of specified size. """
     return [[0 for _x in range(width)] for _y in range(height)]
 
-def _initialize_grid(grid):
+def _initialize_grid(grid: GridType):
     """ Randomly set grid locations to on/off based on chance. """
     height = len(grid)
     width = len(grid[0])
@@ -32,7 +33,7 @@ def _initialize_grid(grid):
             if random.random() <= ExplorerConfig().map_generator_settings()['cellular']['start_alive_chance']:
                 grid[row][column] = 1
 
-def _count_alive_neighbors(grid, x, y):
+def _count_alive_neighbors(grid: GridType, x: int, y: int) -> int:
     """ Count neighbors that are alive. """
     height = len(grid)
     width = len(grid[0])
@@ -50,7 +51,7 @@ def _count_alive_neighbors(grid, x, y):
                 alive_count += 1
     return alive_count
 
-def _do_simulation_step(old_grid):
+def _do_simulation_step(old_grid: GridType) -> GridType:
     """ Run a step of the cellular automaton. """
     height = len(old_grid)
     width = len(old_grid[0])
@@ -71,7 +72,7 @@ def _do_simulation_step(old_grid):
                     new_grid[y][x] = 0
     return new_grid
 
-def generate_map():
+def generate_map() -> tuple[GridType, arcade.SpriteList]:
     # Create cave system using a 2D grid
     map_generator_settings = ExplorerConfig().map_generator_settings()
     grid = _create_grid(map_generator_settings['grid_width'], map_generator_settings['grid_height'])

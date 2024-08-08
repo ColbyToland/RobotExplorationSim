@@ -79,15 +79,12 @@ class GameView(arcade.View):
     def setup(self):
         """ Most values initialized here in anticipation of a simulation restart in the future. """
 
-        logger = SimLogger()
-
         self.timer_steps = 0
+        self.start_time = timeit.default_timer()
         self.wifi = WiFi()
 
         # Create cave system using a 2D grid
-        logger.info("Map generation started")
         self.grid, self.wall_list = MapMaker.generate_map()
-        logger.info("Map generation complete")
 
         # Set up the bots
         self.robot_list = arcade.SpriteList(use_spatial_hash=True)
@@ -98,7 +95,7 @@ class GameView(arcade.View):
             robot_sprite = self._build_robot()
             self.robot_list.append(robot_sprite)
             log_str += str(i) + ": " + robot_sprite.name + "\n"
-        logger.info(log_str)
+        SimLogger().info(log_str)
 
         # Setup the physics engines for collision detection and enforcement
         # Arcade's simple engine only supports acting on one sprite at a time
@@ -211,10 +208,11 @@ class GameView(arcade.View):
         """ Movement and game logic """
 
         # Shutdown and save results when the timer expires
-        self.timer_steps += 1
-        if self.timer_steps > ExplorerConfig().sim_steps():
+        if self.timer_steps >= ExplorerConfig().sim_steps():
+            SimLogger().info(f"Reached end of simulation. {self.timer_steps} steps over {timeit.default_timer()-self.start_time} seconds")
             self.save_results()
             sys.exit()
+        self.timer_steps += 1
 
         start_time = timeit.default_timer()
 
@@ -313,6 +311,8 @@ class GameView(arcade.View):
             f.write(f"Min Processing Time: {min(self.processing_times)}\n")
             f.write(f"Max Processing Time: {max(self.processing_times)}\n")
             f.write(f"Total Processing Time: {total_processing_time}\n")
+
+            f.write(f"Total Simulation Time: {timeit.default_timer() - self.start_time}\n")
 
             f.write("\n")
 

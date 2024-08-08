@@ -6,13 +6,14 @@ import logging
 from pythonjsonlogger import jsonlogger
 import sys
 from traceback import print_tb
+from typing import Optional
 
 from ExplorerConfig import ExplorerConfig
 
 
 SIM_LOGGER_NAME = "SimulationLogger"
 
-def setup_logger(logger, fname):
+def setup_logger(logger: logging.Logger, fname: str):
     """ Standardizes logger output style """
     if fname is None:
         raise ValueError("Log file can't be None")
@@ -27,13 +28,13 @@ def setup_logger(logger, fname):
     logger.setLevel(logging.DEBUG)
 
 
-def setup_sim_logger(fname):
+def setup_sim_logger(fname: Optional[str]):
     """ Setup the logger for simulation level events """
     setup_logger(SimLogger(), ExplorerConfig().log_file(fname))
 
     sys.excepthook = handle_exception
 
-def SimLogger():
+def SimLogger() -> logging.Logger:
     return logging.getLogger(SIM_LOGGER_NAME)
 
 def handle_exception(exc_type, exc_value, exc_traceback):
@@ -65,5 +66,5 @@ def setup_robot_logger():
         setup_logger(logger, fname)
     return logger_id
 
-def RobotLogger(robot_id):
+def RobotLogger(robot_id) -> logging.Logger:
     return logging.getLogger(robot_id)
