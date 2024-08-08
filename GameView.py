@@ -171,7 +171,7 @@ class GameView(arcade.View):
 
         self.draw_time = timeit.default_timer() - draw_start_time
 
-    def scroll_to_robot(self, speed):
+    def scroll_to_robot(self, speed: float):
         """ Scroll the window to the player.
 
         if CAMERA_SPEED is 1, the camera will immediately move to the desired position.

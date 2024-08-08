@@ -43,8 +43,6 @@ class WiFi:
         self.msg_queue = asyncio.Queue()
 
     async def send_message(self, msg: Message):
-        if not isinstance(msg, Message):
-            raise TypeError(f"Attempted to send something that isn't a message: {type(msg)}")
         await self.msg_queue.put(msg)
 
     async def update(self, robot_list: arcade.SpriteList):

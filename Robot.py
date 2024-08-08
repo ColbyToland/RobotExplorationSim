@@ -19,9 +19,11 @@ from ExplorerConfig import ExplorerConfig
 from LaserRangeFinder import LaserRangeFinder, Measurement
 from RobotMessages import OccupancyGridMessage
 from OccupancyGrid import OccupancyGrid
-from OccupancyGridTypes import GridCellStatus, GridResolution
+from OccupancyGridTypes import GridResolution, GridCellStatus
 from SimulationLoggers import RobotLogger, setup_robot_logger
-from utils import manhattan_dist
+from types import FunctionType
+from typing import Optional
+from utils import fTuplePt2, manhattan_dist, PtType
 import WiFi
 
 
@@ -36,7 +38,7 @@ class Robot(arcade.Sprite):
 
     ## Setup ##
 
-    def __init__(self, wall_list, speed = 5):
+    def __init__(self, wall_list: arcade.SpriteList, speed: float=5):
         """ Initialization takes care of all setup. There are no additional setup functions. """
 
         drawing_settings = ExplorerConfig().drawing_settings()
@@ -107,10 +109,10 @@ class Robot(arcade.Sprite):
         """ Turn off comms """
         self.comm_enabled = False
 
-    def _comm_ready(self):
+    def _comm_ready(self) -> bool:
         return self.comm_enabled and self.timer_steps % self.comm_update_period == 0
 
-    def _is_position_valid(self, pos):
+    def _is_position_valid(self, pos: PtType) -> bool:
         """ Set the current position to the position to check, check for collision, set position back """
         if pos[0] < 0 or pos[0] > self.max_x or pos[1] < 0 or pos[1] > self.max_y:
             # Out of bounds
@@ -122,15 +124,15 @@ class Robot(arcade.Sprite):
         self.position = cur_pos
         return len(walls_hit) == 0
 
-    def _is_position_valid_in_occupancy_grid(self, pos):
+    def _is_position_valid_in_occupancy_grid(self, pos: PtType) -> bool:
         cell_status = self.map.get_cell(pos[0], pos[1]).status()
         return cell_status == GridCellStatus.UNEXPLORED or cell_status == GridCellStatus.CLEAR
 
-    def _is_position_unknown_in_occupancy_grid(self, pos):
+    def _is_position_unknown_in_occupancy_grid(self, pos: PtType) -> bool:
         cell_status = self.map.get_cell(pos[0], pos[1]).status()
         return cell_status == GridCellStatus.UNEXPLORED or cell_status == GridCellStatus.CLEAR
 
-    def _get_position(self, test_func):
+    def _get_position(self, test_func: FunctionType) -> fTuplePt2:
         """ Randomly select a valid position that meets the test condition """
         next_x = self.center_x
         next_y = self.center_y
@@ -146,15 +148,15 @@ class Robot(arcade.Sprite):
 
         return (next_x, next_y)
 
-    def _get_valid_position(self):
+    def _get_valid_position(self) -> fTuplePt2:
         """ Randomly select a valid position not in the walls """
         return self._get_position(self._is_position_valid)
 
-    def _get_valid_position_from_occupancy_grid(self):
+    def _get_valid_position_from_occupancy_grid(self) -> fTuplePt2:
         """ Randomly select a valid position not in the walls """
         return self._get_position(self._is_position_valid_in_occupancy_grid)
 
-    def _get_unknown_position_from_occupancy_grid(self):
+    def _get_unknown_position_from_occupancy_grid(self) -> fTuplePt2:
         """ Randomly select a valid position not in the walls """
         return self._get_position(self._is_position_unknown_in_occupancy_grid)
 
@@ -164,7 +166,7 @@ class Robot(arcade.Sprite):
 
     ## Communication ##
 
-    async def update_comm_partners(self, wifi):
+    async def update_comm_partners(self, wifi: WiFi.WiFi):
         """ Validate requirements are met then send occupancy map data to other bots """
         if not self._comm_ready():
             return
@@ -174,14 +176,12 @@ class Robot(arcade.Sprite):
             msg.data = partner_map
             await wifi.send_message(msg)
 
-    def _add_partner_map(self, bot_name, partner_map, timestamp):
+    def _add_partner_map(self, bot_name: str, partner_map: OccupancyGrid, timestamp: int):
         """ Accept map data for any other bot so long as it's newer than what is currently held """
         if not bot_name in self.partner_maps or timestamp > self.partner_maps[bot_name]['timestamp']:
             self.partner_maps[bot_name] = {'timestamp': timestamp, 'map': partner_map.copy()}
 
-    async def rcv_msg(self, msg):
-        if not isinstance(msg, WiFi.Message):
-            raise TypeError(f"Received an invalid message: {type(msg)}")
+    async def rcv_msg(self, msg: WiFi.Message):
         if msg.valid_receiver(self.name):
             if isinstance(msg, OccupancyGridMessage):
                 self._add_partner_map(msg.bot_name, msg.bot_map, msg.timestamp)
@@ -216,7 +216,7 @@ class Robot(arcade.Sprite):
 
         self.jam_check['index'] = (self.jam_check['index'] + 1) % len(self.jam_check['position_buffer'])
 
-    async def _update(self, wifi):
+    async def _update(self, wifi: WiFi.WiFi):
         """ Base robot doesn't move automatically """
 
         # Update internal clock
@@ -224,7 +224,7 @@ class Robot(arcade.Sprite):
 
         await self.update_comm_partners(wifi)
 
-    async def update(self, wifi, physics_engine=None):
+    async def update(self, wifi: WiFi.WiFi, physics_engine: Optional[arcade.PhysicsEngineSimple]=None):
         prev_pos = self.position
         await self._update(wifi)
         new_pos = self.position
@@ -239,7 +239,7 @@ class Robot(arcade.Sprite):
         if prev_pos != new_pos:
             self._check_and_fix_jammed_robot()
 
-    async def sensor_update(self, obstructions):
+    async def sensor_update(self, obstructions: list[arcade.SpriteList]):
         """ Simulate each range finder based on the simulated world """
         measure_tasks = []
         for range_finder in self.range_finders:
@@ -283,7 +283,7 @@ class Robot(arcade.Sprite):
 
     ## End Simulation ##
 
-    def save_map(self, name=None):
+    def save_map(self, name: Optional[str]=None):
         """ Convert the occupancy map to an image """
         if not name:
             name = self.name + " - " + str(datetime.now())
