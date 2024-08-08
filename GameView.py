@@ -19,18 +19,18 @@ python3 -m arcade.examples.procedural_caves_cellular
 
 import arcade
 import asyncio
-import timeit
 from matplotlib import pyplot as plt
 import numpy as np
-import os
 from pyglet.math import Vec2
 import sys
+import timeit
 
 from ExplorerConfig import ExplorerConfig
 import MapMaker
 import NaiveRandomRobot
 import Robot
 import RandomRobot
+from SimulationLoggers import SimLogger
 from WiFi import WiFi
 
 
@@ -78,19 +78,27 @@ class GameView(arcade.View):
 
     def setup(self):
         """ Most values initialized here in anticipation of a simulation restart in the future. """
+
+        logger = SimLogger()
+
         self.timer_steps = 0
         self.wifi = WiFi()
 
         # Create cave system using a 2D grid
+        logger.info("Map generation started")
         self.grid, self.wall_list = MapMaker.generate_map()
+        logger.info("Map generation complete")
 
         # Set up the bots
         self.robot_list = arcade.SpriteList(use_spatial_hash=True)
         self.bot_paths = []
+        log_str = "Bot id to name map:\n"
         for i in range(ExplorerConfig().bot_count()):
             self.bot_paths.append([])
             robot_sprite = self._build_robot()
             self.robot_list.append(robot_sprite)
+            log_str += str(i) + ": " + robot_sprite.name + "\n"
+        logger.info(log_str)
 
         # Setup the physics engines for collision detection and enforcement
         # Arcade's simple engine only supports acting on one sprite at a time
@@ -125,25 +133,26 @@ class GameView(arcade.View):
     def on_draw(self):
         """ Render the screen. """
 
-        # Start timing how long this takes
+        drawing_settings = ExplorerConfig().drawing_settings()
+
         draw_start_time = timeit.default_timer()
 
-        # This command should happen before we start drawing. It will clear
-        # the screen to the background color, and erase what we drew last frame.
         self.clear()
-
-        # Select the camera we'll use to draw all our sprites
         self.camera_sprites.use()
 
-        # Draw the sprites
         self.wall_list.draw()
+
+        # Draw the paths over the walls and under the bots
+        for robot_sprite in self.robot_list:
+            if drawing_settings['draw_trajectory'] and robot_sprite.path != []:
+                arcade.draw_line(robot_sprite.center_x, robot_sprite.center_y, robot_sprite.dest_x, robot_sprite.dest_y, arcade.color.BLUE, 2)
+                arcade.draw_line(robot_sprite.dest_x, robot_sprite.dest_y, robot_sprite.path[0][0], robot_sprite.path[0][1], arcade.color.BLUE, 2)
+                arcade.draw_line_strip(robot_sprite.path, arcade.color.BLUE, 2)
+
         self.robot_list.draw()
 
         # Draw optional bot dynamics
-        drawing_settings = ExplorerConfig().drawing_settings()
         for robot_sprite in self.robot_list:
-            if drawing_settings['draw_trajectory'] and robot_sprite.path != []:
-                arcade.draw_line_strip(robot_sprite.path, arcade.color.BLUE, 2)
             if drawing_settings['draw_sensors']:
                 robot_sprite.draw_sensors()
             if drawing_settings['draw_comms']:
@@ -271,7 +280,7 @@ class GameView(arcade.View):
 
     def save_statistics(self):
         """ Store numeric statistics for comparing simulations """
-        with open("output/statistics.txt", "w+", encoding="utf-8") as f:
+        with open(ExplorerConfig().output_dir() + "/statistics.txt", "w+", encoding="utf-8") as f:
             seed = ExplorerConfig().map_generator_settings()['grid_seed']
             f.write(f"Random Seed: {seed}\n")
             bot_count = len(self.robot_list)
@@ -313,12 +322,9 @@ class GameView(arcade.View):
     def save_results(self):
         """ Store any simulation results to files and images """
 
-        # Without this, save images when the folder doesn't exist crashes
-        os.makedirs("output", exist_ok=True)
-
         # Save each robot's map constructed from sensor data
         for i in range(len(self.robot_list)):
-            self.robot_list[i].save_map("output/Map - Robot " + str(i))
+            self.robot_list[i].save_map(ExplorerConfig().output_dir() + "/Map - Robot " + str(i))
 
         # Save the actual map and robot paths
         true_map = []
@@ -333,10 +339,10 @@ class GameView(arcade.View):
             plt.plot(self.robot_list[i].center_x, self.robot_list[i].center_y, '^')
 
         plt.axis((0, ExplorerConfig().max_x(), 0, ExplorerConfig().max_y()))
-        plt.savefig("output/true_map")
+        plt.savefig(ExplorerConfig().output_dir() + "/true_map")
         plt.close(fig)
 
-        with open("output/config.yaml", "w+", encoding="utf-8") as f:
+        with open(ExplorerConfig().output_dir() + "/config.yaml", "w+", encoding="utf-8") as f:
             f.write(str(ExplorerConfig()))
 
         self.save_statistics()

@@ -39,6 +39,9 @@ DefaultExplorerConfig = {
         'focus_timer': 200
         },
     'simulation': {
+        'output_dir': 'output',
+        'log_file': 'simulation.log',
+        'split_out_bot_logs': False,
         'bot_count': 3,
         'sim_steps': 200,
         'use_async': True,
@@ -92,7 +95,12 @@ DefaultExplorerConfig = {
 hdd_config_file = None
 
 class ExplorerConfig:
-    def __init__(self, fname=None):
+    def __init__(self):
+        global hdd_config_file
+        if hdd_config_file is None:
+            hdd_config_file = deepcopy(DefaultExplorerConfig)
+
+    def set_config(self, fname):
         global hdd_config_file
         if hdd_config_file is None:
             hdd_config_file = deepcopy(DefaultExplorerConfig)
@@ -101,6 +109,7 @@ class ExplorerConfig:
                 override_config = yaml.safe_load(file)
                 if is_valid_key_chain(override_config, ['simulation', 'map_generator', 'grid_seed']) and override_config['simulation']['map_generator']['grid_seed']:
                     # If there is a random seed in the config file then default async_physics off
+                    # Do this before the override copy so the user config still overrides this
                     hdd_config_file['simulation']['async_physics'] = False
                 copy_override_dict(hdd_config_file, override_config)
 
@@ -116,6 +125,18 @@ class ExplorerConfig:
  
     def camera_settings(self):
         return hdd_config_file['camera']
+
+    def output_dir(self):
+        return hdd_config_file['simulation']['output_dir']
+
+    def log_file(self, fname=None):
+        if not fname is None:
+            # Set it here in case another class wants to create additional logs based on the main log name
+            hdd_config_file['simulation']['log_file'] = fname
+        return hdd_config_file['simulation']['output_dir'] + "/" + hdd_config_file['simulation']['log_file']
+
+    def split_out_bot_logs(self):
+        return hdd_config_file['simulation']['split_out_bot_logs']
 
     def bot_count(self):
         return hdd_config_file['simulation']['bot_count']

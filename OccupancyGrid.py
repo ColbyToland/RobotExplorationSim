@@ -56,9 +56,9 @@ class OccupancyGrid:
         return c, r
 
     def _position(self, c, r):
-        """ Bottom left corner of the indexed grid square """
-        x = c*self.resolution_scale
-        y = r*self.resolution_scale
+        """ Center of the indexed grid square """
+        x = c*self.resolution_scale+self.resolution_scale/2
+        y = r*self.resolution_scale+self.resolution_scale/2
         return x, y
 
     def map_ind(self, x, y):

@@ -20,6 +20,7 @@ from LaserRangeFinder import LaserRangeFinder, Measurement
 from RobotMessages import OccupancyGridMessage
 from OccupancyGrid import OccupancyGrid
 from OccupancyGridTypes import GridCellStatus, GridResolution
+from SimulationLoggers import RobotLogger, setup_robot_logger
 from utils import manhattan_dist
 import WiFi
 
@@ -41,6 +42,7 @@ class Robot(arcade.Sprite):
         drawing_settings = ExplorerConfig().drawing_settings()
         super().__init__(":resources:images/animated_characters/robot/robot_idle.png", drawing_settings['scale'])
 
+        self.logger_id = setup_robot_logger()
         self.timer_steps= 0
         self.name = None
         self.gen_name()
@@ -94,6 +96,8 @@ class Robot(arcade.Sprite):
             if candidate not in assigned_robot_names:
                 self.name = candidate
                 assigned_robot_names.append(self.name)
+        RobotLogger(self.logger_id).info("Robot name: " + self.name)
+
 
     def enable_comms(self):
         """ Turn on comms """
@@ -229,9 +233,11 @@ class Robot(arcade.Sprite):
         if new_pos != self.position:
             # Async physics can cause bots to get pushed around so pause in place and pick a new path
             self.position = prev_pos
+            self.path = []
             self._get_new_path()
             self.dest_x, self.dest_y = self.path.pop(0)
-        self._check_and_fix_jammed_robot()
+        if prev_pos != new_pos:
+            self._check_and_fix_jammed_robot()
 
     async def sensor_update(self, obstructions):
         """ Simulate each range finder based on the simulated world """
