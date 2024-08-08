@@ -1,0 +1,16 @@
+simulation:
+  bot_count: 5
+  sim_steps: 200
+  map_generator:
+    grid_seed: 1599335621182662412
+  robot:
+      type: naive_random
+      unimplemented_feature: 7
+  unimplemented_feature: false
+invalid_setting_1: test
+invalid_setting_2:
+  do: you
+  have: the
+  time: to
+  listen: to
+  me: whine

@@ -93,6 +93,7 @@ DefaultExplorerConfig = {
     }
 
 hdd_config_file = None
+unrecognized_settings = {}
 
 class ExplorerConfig:
     def __init__(self):
@@ -102,6 +103,7 @@ class ExplorerConfig:
 
     def set_config(self, fname):
         global hdd_config_file
+        global unrecognized_settings
         if hdd_config_file is None:
             hdd_config_file = deepcopy(DefaultExplorerConfig)
         if not fname is None:
@@ -111,7 +113,13 @@ class ExplorerConfig:
                     # If there is a random seed in the config file then default async_physics off
                     # Do this before the override copy so the user config still overrides this
                     hdd_config_file['simulation']['async_physics'] = False
-                copy_override_dict(hdd_config_file, override_config)
+                unrecognized_settings = copy_override_dict(hdd_config_file, override_config)
+
+    def unrecognized_user_settings(self):
+        return unrecognized_settings
+
+    def unrecognized_user_settings_as_str(self):
+        return yaml.dump(deepcopy(unrecognized_settings))
 
     def window_settings(self):
         return hdd_config_file['window']

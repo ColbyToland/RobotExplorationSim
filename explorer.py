@@ -38,6 +38,7 @@ def main():
     setup_sim_logger(args.log_file)
     logger = SimLogger()
     logger.debug(ExplorerConfig())
+    logger.debug("Unrecognized settings:\n" + ExplorerConfig().unrecognized_user_settings_as_str())
     logger.info(f"New simulation started with seed {ExplorerConfig().map_generator_settings()['grid_seed']}")
 
     # Set random seed if applicable

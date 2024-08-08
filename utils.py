@@ -226,12 +226,18 @@ def copy_override_dict(main_dict, override_dict):
     """ Recursive copying of override values from one dict to another """
     if override_dict is None:
         return
+    invalid_overrides = {} # For keys in the override dict that don't exist in the main dict
     for key, value in override_dict.items():
         if key in main_dict:
             if isinstance(value, dict):
-                copy_override_dict(main_dict[key], override_dict[key])
+                sub_invalid_overrides = copy_override_dict(main_dict[key], override_dict[key])
+                if sub_invalid_overrides != {}:
+                    invalid_overrides[key] = sub_invalid_overrides
             else:
                 main_dict[key] = override_dict[key]
+        else:
+            invalid_overrides[key] = deepcopy(override_dict[key])
+    return invalid_overrides
 
 def is_valid_key_chain(config, key_chain):
     """ Check a sequence of keys exist in a nested dictionary """
