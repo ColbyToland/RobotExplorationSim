@@ -60,6 +60,11 @@ class Robot(arcade.Sprite):
         self.dest_x, self.dest_y = self.center_x, self.center_y
         self.speed = speed
 
+        self.nametext = arcade.Text(self.name,
+                                    self.center_x,
+                                    self.center_y - self.grid_size / 2,
+                                    arcade.color.WHITE, 8)
+
         # path planning
         self.barrier_list = arcade.AStarBarrierList(self, self.wall_list, self.grid_size, 0, self.max_x, 0, self.max_y)
         self.path = []
@@ -291,6 +296,10 @@ class Robot(arcade.Sprite):
         arcade.draw_circle_outline(self.center_x, self.center_y, radius, arcade.color.BLUE)
         arcade.draw_circle_outline(self.center_x, self.center_y, radius-shrink, arcade.color.BLUE)
         arcade.draw_circle_outline(self.center_x, self.center_y, radius-2*shrink, arcade.color.BLUE)
+
+    def draw_name(self):
+        self.nametext.position = (self.center_x - self.grid_size, self.center_y + self.grid_size / 2)
+        self.nametext.draw()
 
 
     ## End Simulation ##

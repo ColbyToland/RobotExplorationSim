@@ -1,6 +1,6 @@
 simulation:
   sim_steps: 200
-#  split_out_bot_logs: true
+  split_out_bot_logs: true
   map_generator:
     grid_seed: 1599335621182662412
   robots:

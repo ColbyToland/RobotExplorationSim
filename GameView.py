@@ -160,6 +160,7 @@ class GameView(arcade.View):
                 robot_sprite.draw_sensors()
             if drawing_settings['draw_comms']:
                 robot_sprite.draw_comms()
+            robot_sprite.draw_name()
 
         # Select the (unscrolled) camera for our GUI
         self.camera_gui.use()
