@@ -173,7 +173,7 @@ class Robot(arcade.Sprite):
         """ Randomly select a valid position not in the walls """
         return self._get_position(self._is_position_unknown_in_occupancy_grid)
 
-    def _get_new_path():
+    def _get_new_path(self):
         """ This bot doesn't move """
         pass
 
@@ -248,7 +248,7 @@ class Robot(arcade.Sprite):
             physics_engine.update()
         if new_pos != self.position:
             # Async physics can cause bots to get pushed around so pause in place and pick a new path
-            RobotLogger(self.logger_id).debug(f"Bot {self.bot_name} ran into an obstacle at {new_pos} and was pushed back to {self.position}")
+            RobotLogger(self.logger_id).debug(f"Bot {self.name} ran into an obstacle at {new_pos} and was pushed back to {self.position}")
             self.position = prev_pos
             self.path = []
             self._get_new_path()

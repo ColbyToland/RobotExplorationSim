@@ -1,5 +1,24 @@
+window:
+  width: 1000
+  height: 1000
+  subtitle: Demo
 simulation:
-  bot_count: 3
   sim_steps: 1000
-  use_async: true
-  async_physics: true
+  map_generator:
+    grid_width: 50
+    grid_height: 50
+  robots:
+    - type: naive_random # primary bot
+      bot_count: 3
+    - type: base # WiFi repeaters
+      bot_count: 2
+      sensor:
+        count: 0
+      comms:
+        wireless_range_grid_scale: 30
+        update_period: 1
+      name_generator:
+        - - Red
+          - Green
+          - Blue
+        - - Repeater
