@@ -77,6 +77,7 @@ DefaultExplorerConfig = {
         'output_dir': 'output',
         'log_file': 'simulation.log',
         'split_out_bot_logs': False,
+        'save_video': False,
         'sim_steps': 200,
         'use_async': True,
         'async_physics': True,
@@ -164,6 +165,9 @@ class ExplorerConfig:
 
     def split_out_bot_logs(self) -> bool:
         return hdd_config_file['simulation']['split_out_bot_logs']
+
+    def save_video(self) -> bool:
+        return hdd_config_file['simulation']['save_video']
 
     def sim_steps(self) -> int:
         return hdd_config_file['simulation']['sim_steps']

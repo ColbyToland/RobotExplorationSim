@@ -18,6 +18,7 @@ simulation:                             # All things that affect the output imag
   output_dir: "output/results"          # Folder to store output files
   log_file: explorer.log                # Log file name but command line argument overrides this
   split_out_bot_logs: true              # Send robot logs to the simulation log file or a file just for that bot instance
+  save_video: true                      # Save a video of the simulation
   sim_steps: 200                        # Number of simulation steps before the simulation ends and results saved out as images
   use_async: true                       # Run bots and their sensors asynchronously
   async_physics: true                   # Run the physics engines asynchronously (changes bot-bot collision behavior and may make the performance non-repeatable)

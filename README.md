@@ -2,11 +2,15 @@
 This is meant to be a lightweight Python based simulator to try out robot team map exploration algorithms.
 
 ## Setup
+> Note: This project is only confirmed to work on Ubuntu 24.04 (Linux)
+
 Basic Python virtual environment setup:
 
     python3 -m venv venv
     source venv/bin/activate
     pip install -r requirements.txt
+
+To save videos you'll also need FFMPEG installed.
 
 ## Run
 Run the default simulation:

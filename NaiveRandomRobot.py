@@ -114,16 +114,4 @@ class NaiveRandomRobot(Robot.Robot):
             self._update_dest()
         self.nav_map_updated = False
 
-        # X and Y diff between the two
-        x_diff = self.dest_x - self.center_x
-        y_diff = self.dest_y - self.center_y
-
-        if abs(x_diff) > self.speed:
-            x_diff = math.copysign(self.speed, x_diff)
-        if abs(y_diff) > self.speed:
-            y_diff = math.copysign(self.speed, y_diff)
-
-        self.center_x += x_diff
-        self.center_y += y_diff
-
         await self.update_comm_partners(wifi)

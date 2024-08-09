@@ -19,6 +19,7 @@ python3 -m arcade.examples.procedural_caves_cellular
 
 import arcade
 import asyncio
+import cv2
 from matplotlib import pyplot as plt
 import numpy as np
 from pyglet.math import Vec2
@@ -50,6 +51,7 @@ class GameView(arcade.View):
         self.physics_engines = []
         self.timer_steps = 0
         self.bot_paths = None
+        self.video = None
 
         # Special bot for camera actions and keyboard events
         self.player_sprite = None
@@ -92,6 +94,9 @@ class GameView(arcade.View):
         self.timer_steps = 0
         self.start_time = timeit.default_timer()
         self.wifi = WiFi()
+        if ExplorerConfig().save_video():
+            fourcc = cv2.VideoWriter.fourcc(*'MJPG')
+            self.video = cv2.VideoWriter(ExplorerConfig().output_dir() + '/robot_sim.avi', fourcc, 20, (self.window.width, self.window.height))
 
         # Create cave system using a 2D grid
         self.grid, self.wall_list = MapMaker.generate_map()
@@ -184,6 +189,10 @@ class GameView(arcade.View):
         self.processing_time_text.text = output
         self.processing_time_text.draw()
         self.processing_times.append(self.processing_time)
+
+        if ExplorerConfig().save_video():
+            img = cv2.cvtColor(np.array(arcade.get_image()), cv2.COLOR_RGB2BGR)
+            self.video.write(img)
 
         self.draw_time = timeit.default_timer() - draw_start_time
 
@@ -369,5 +378,9 @@ class GameView(arcade.View):
         plt.axis((0, ExplorerConfig().max_x(), 0, ExplorerConfig().max_y()))
         plt.savefig(ExplorerConfig().output_dir() + "/true_map")
         plt.close(fig)
+
+        if ExplorerConfig().save_video():
+            self.video.release()
+            cv2.destroyAllWindows()
 
         self.save_statistics()

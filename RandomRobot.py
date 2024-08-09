@@ -40,15 +40,4 @@ class RandomRobot(Robot.Robot):
         if self.distance_to_goal() <= self.speed or self.path == []:
             self._update_dest()
 
-        x_diff = self.dest_x - self.center_x
-        y_diff = self.dest_y - self.center_y
-
-        if abs(x_diff) > self.speed:
-            x_diff = math.copysign(self.speed, x_diff)
-        if abs(y_diff) > self.speed:
-            y_diff = math.copysign(self.speed, y_diff)
-
-        self.center_x += x_diff
-        self.center_y += y_diff
-
         await self.update_comm_partners(wifi)

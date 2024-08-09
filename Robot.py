@@ -241,11 +241,23 @@ class Robot(arcade.Sprite):
 
         await self.update_comm_partners(wifi)
 
+    def update_speed(self):
+        # X and Y diff between the two
+        self.change_x = self.dest_x - self.center_x
+        self.change_y = self.dest_y - self.center_y
+
+        if abs(self.change_x) > self.speed:
+            self.change_x = math.copysign(self.speed, self.change_x)
+        if abs(self.change_y) > self.speed:
+            self.change_y = math.copysign(self.speed, self.change_y)
+
     async def update(self, wifi: WiFi.WiFi, physics_engine: Optional[arcade.PhysicsEngineSimple]=None):
         await self._update(wifi)
-        hit_obstacle = None
+        self.update_speed()
+        hit_obstacle = []
         if physics_engine:
             hit_obstacle = physics_engine.update()
+            # BUG: When the position isn't updated there is no hit obstacle returned!
         if hit_obstacle:
             RobotLogger(self.logger_id).debug(f"Bot {self.name} ran into an obstacle at {self.position}")
             if self.replan_on_collision:
