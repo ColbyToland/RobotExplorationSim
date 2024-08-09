@@ -70,6 +70,7 @@ class NaiveRandomRobot(Robot.Robot):
             # After multiple attempts, no valid destination could be found
             # Don't keep trying to avoid bogging down the simulation
             self.dest_x, self.dest_y = self.position
+            self.path = []
             return
 
         attempts = 0
