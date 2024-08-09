@@ -1,0 +1,4 @@
+simulation:
+  sim_steps: 1000
+  robots:
+    - type: pc

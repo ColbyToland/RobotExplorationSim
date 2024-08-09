@@ -28,6 +28,7 @@ import timeit
 from ExplorerConfig import ExplorerConfig
 import MapMaker
 import NaiveRandomRobot
+import PlayerCharacterRobot
 import Robot
 import RandomRobot
 from SimulationLoggers import SimLogger
@@ -49,6 +50,9 @@ class GameView(arcade.View):
         self.physics_engines = []
         self.timer_steps = 0
         self.bot_paths = None
+
+        # Special bot for camera actions and keyboard events
+        self.player_sprite = None
 
         # Create the cameras. One for the GUI, one for the sprites.
         # We scroll the 'sprite world' but not the GUI.
@@ -74,7 +78,12 @@ class GameView(arcade.View):
         elif robot_type == RandomRobot.TYPE_NAME:
             return RandomRobot.RandomRobot(robot_group_id, self.wall_list)
         elif robot_type == NaiveRandomRobot.TYPE_NAME:
-             return NaiveRandomRobot.NaiveRandomRobot(robot_group_id, self.wall_list)
+            return NaiveRandomRobot.NaiveRandomRobot(robot_group_id, self.wall_list)
+        elif robot_type == PlayerCharacterRobot.TYPE_NAME:
+            if self.player_sprite is not None:
+                ValueError(f"Only one player sprite allowed! Attempting to make {ExplorerConfig().bot_count(robot_group_id)}")
+            self.player_sprite = PlayerCharacterRobot.PlayerCharacterRobot(robot_group_id, self.wall_list)
+            return self.player_sprite
         raise ValueError(f"Robot type is not recognized: {robot_type}")
 
     def setup(self):
@@ -186,16 +195,18 @@ class GameView(arcade.View):
         pan.
         """
 
-        # rotate focus on the bots
-        self.bot_focus_timer += 1
-        if self.bot_focus_timer >= ExplorerConfig().camera_settings()['focus_timer']:
-            self.current_bot += 1
-            if self.current_bot >= len(self.robot_list):
-                self.current_bot = 0
-            self.bot_focus_timer = 0
+        robot_sprite = self.player_sprite
+        if self.player_sprite is None:
+            # Rotate focus on the bots if there is no player controlled sprite
+            self.bot_focus_timer += 1
+            if self.bot_focus_timer >= ExplorerConfig().camera_settings()['focus_timer']:
+                self.current_bot += 1
+                if self.current_bot >= len(self.robot_list):
+                    self.current_bot = 0
+                self.bot_focus_timer = 0
+            robot_sprite = self.robot_list[self.current_bot]
 
         # update camera position
-        robot_sprite = self.robot_list[self.current_bot]
         position = Vec2(robot_sprite.center_x - self.window.width / 2,
                         robot_sprite.center_y - self.window.height / 2)
         self.camera_sprites.move_to(position, speed)
@@ -210,6 +221,16 @@ class GameView(arcade.View):
         """
         self.camera_sprites.resize(int(width), int(height))
         self.camera_gui.resize(int(width), int(height))
+
+    def on_key_press(self, key, modifiers):
+        """ Delegate key presses to the player robot if it exists """
+        if self.player_sprite is not None:
+            self.player_sprite.on_key_press(key, modifiers)
+
+    def on_key_release(self, key, modifiers):
+        """ Delegate key presses to the player robot if it exists """
+        if self.player_sprite is not None:
+            self.player_sprite.on_key_release(key, modifiers)
 
     def on_update(self, delta_time):
         """ Movement and game logic """

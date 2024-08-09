@@ -68,6 +68,7 @@ class Robot(arcade.Sprite):
         # path planning
         self.barrier_list = arcade.AStarBarrierList(self, self.wall_list, self.grid_size, 0, self.max_x, 0, self.max_y)
         self.path = []
+        self.replan_on_collision = True
 
         self.jam_check = {'position_buffer': [], 'index':0}
         for i in range(10):
@@ -241,19 +242,16 @@ class Robot(arcade.Sprite):
         await self.update_comm_partners(wifi)
 
     async def update(self, wifi: WiFi.WiFi, physics_engine: Optional[arcade.PhysicsEngineSimple]=None):
-        prev_pos = self.position
         await self._update(wifi)
-        new_pos = self.position
+        hit_obstacle = None
         if physics_engine:
-            physics_engine.update()
-        if new_pos != self.position:
-            # Async physics can cause bots to get pushed around so pause in place and pick a new path
-            RobotLogger(self.logger_id).debug(f"Bot {self.name} ran into an obstacle at {new_pos} and was pushed back to {self.position}")
-            self.position = prev_pos
-            self.path = []
-            self._get_new_path()
-            self.dest_x, self.dest_y = self.path.pop(0)
-        if prev_pos != new_pos:
+            hit_obstacle = physics_engine.update()
+        if hit_obstacle:
+            RobotLogger(self.logger_id).debug(f"Bot {self.name} ran into an obstacle at {self.position}")
+            if self.replan_on_collision:
+                self.path = []
+                self._get_new_path()
+                self.dest_x, self.dest_y = self.path.pop(0)
             self._check_and_fix_jammed_robot()
 
     async def sensor_update(self, obstructions: list[arcade.SpriteList]):

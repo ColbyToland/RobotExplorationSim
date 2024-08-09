@@ -130,6 +130,8 @@ class ExplorerConfig:
                     for i in range(len(override_config['simulation']['robots'])):
                         # add defaults for each robot group
                         robot_unrecognized_settings = copy_override_dict(hdd_config_file['simulation']['robots'][i], override_config['simulation']['robots'][i])
+                        if 'type' in override_config['simulation']['robots'][i] and override_config['simulation']['robots'][i]['type'] == 'pc':
+                            hdd_config_file['simulation']['robots'][i]['bot_count'] = 1
                         unrecognized_settings['simulation']['robots'].append(robot_unrecognized_settings)
 
     def unrecognized_user_settings(self) -> dict:
