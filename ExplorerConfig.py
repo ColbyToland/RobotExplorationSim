@@ -21,6 +21,40 @@ from typing import Optional
 from utils import copy_override_dict, is_valid_key_chain
 
 
+DefaultRobotConfig = {
+    'bot_count': 3,
+    'type': 'random',
+    'map_resolution': 'parity',
+    'sensor': {
+        'count': 8,
+        'beam_grid_scale': 1,
+        'range_grid_scale': 5
+        },
+    'comms': {
+        'wireless_range_grid_scale': 5,
+        'update_period': 10,
+        },
+    'name_generator': [
+            [
+            'Red',
+            'Green',
+            'Blue',
+            'Black',
+            'White',
+            'Gold',
+            'Silver'
+            ],
+            [
+            'Wolf',
+            'Dragon',
+            'Falcon',
+            'Viper',
+            'Shark',
+            'Hornet'
+            ]
+        ]
+    }
+
 DefaultExplorerConfig = {
     'window': {
         'width': 800,
@@ -43,7 +77,6 @@ DefaultExplorerConfig = {
         'output_dir': 'output',
         'log_file': 'simulation.log',
         'split_out_bot_logs': False,
-        'bot_count': 3,
         'sim_steps': 200,
         'use_async': True,
         'async_physics': True,
@@ -58,38 +91,7 @@ DefaultExplorerConfig = {
                 'steps': 4
                 }
             },
-        'robot': {
-            'type': 'random',
-            'map_resolution': 'parity',
-            'sensor': {
-                'count': 8,
-                'beam_grid_scale': 1,
-                'range_grid_scale': 5
-                },
-            'comms': {
-                'wireless_range_grid_scale': 5,
-                'update_period': 10,
-                },
-            'name_generator': [
-                    [
-                    'Red',
-                    'Green',
-                    'Blue',
-                    'Black',
-                    'White',
-                    'Gold',
-                    'Silver'
-                    ],
-                    [
-                    'Wolf',
-                    'Dragon',
-                    'Falcon',
-                    'Viper',
-                    'Shark',
-                    'Hornet'
-                    ]
-                ]
-            }
+        'robots': []
         }
     }
 
@@ -110,11 +112,26 @@ class ExplorerConfig:
         if fname is not None:
             with open(fname, 'r') as file:
                 override_config = yaml.safe_load(file)
+
                 if is_valid_key_chain(override_config, ['simulation', 'map_generator', 'grid_seed']) and override_config['simulation']['map_generator']['grid_seed']:
                     # If there is a random seed in the config file then default async_physics off
                     # Do this before the override copy so the user config still overrides this
                     hdd_config_file['simulation']['async_physics'] = False
+
+                # Setup all settings except the robot groups
                 unrecognized_settings = copy_override_dict(hdd_config_file, override_config)
+
+                # Copy robot settings
+                hdd_config_file['simulation']['robots'] = [deepcopy(DefaultRobotConfig)]
+                if is_valid_key_chain(override_config, ['simulation', 'robots']):
+                    unrecognized_settings.setdefault('simulation', {})['robots'] = []
+                    hdd_config_file['simulation']['robots'] = [deepcopy(DefaultRobotConfig) for i in range(len(override_config['simulation']['robots']))]
+
+                    for i in range(len(override_config['simulation']['robots'])):
+                        # add defaults for each robot group
+                        robot_unrecognized_settings = copy_override_dict(hdd_config_file['simulation']['robots'][i], override_config['simulation']['robots'][i])
+                        unrecognized_settings['simulation']['robots'].append(robot_unrecognized_settings)
+                print(yaml.dump(unrecognized_settings))
 
     def unrecognized_user_settings(self) -> dict:
         return unrecognized_settings
@@ -147,9 +164,6 @@ class ExplorerConfig:
     def split_out_bot_logs(self) -> bool:
         return hdd_config_file['simulation']['split_out_bot_logs']
 
-    def bot_count(self) -> int:
-        return hdd_config_file['simulation']['bot_count']
-
     def sim_steps(self) -> int:
         return hdd_config_file['simulation']['sim_steps']
 
@@ -171,11 +185,26 @@ class ExplorerConfig:
     def max_y(self) -> int:
         return int(self.map_generator_settings()['grid_height'] * self.grid_size())
 
-    def robot_type(self) -> str:
-        return hdd_config_file['simulation']['robot']['type']
+    def total_bot_count(self) -> int:
+        total = 0
+        for robot_group in hdd_config_file['simulation']['robots']:
+            total += robot_group['bot_count']
+        return total
 
-    def robot_map_resolution(self) -> GridResolution:
-        rez_name =  hdd_config_file['simulation']['robot']['map_resolution'].casefold().strip()
+    def robot_group_count(self) -> int:
+        return len(hdd_config_file['simulation']['robots'])
+
+    def bot_count(self, robot_group_id: int) -> int:
+        return hdd_config_file['simulation']['robots'][robot_group_id]['bot_count']
+
+    def robot_type(self, robot_group_id: int) -> str:
+        return hdd_config_file['simulation']['robots'][robot_group_id]['type']
+
+    def robot_map_resolution(self, robot_group_id: int) -> GridResolution:
+        if 'map_resolution' not in hdd_config_file['simulation']['robots'][robot_group_id]:
+            # Don't use an occupancy grid
+            return GridResolution.NONE
+        rez_name = hdd_config_file['simulation']['robots'][robot_group_id]['map_resolution'].casefold().strip()
         if rez_name == 'parity':
             return GridResolution.PARITY
         elif rez_name == 'low':
@@ -184,14 +213,14 @@ class ExplorerConfig:
             return GridResolution.HIGH
         raise ValueError(f"Invalid resolution type: {rez_name}")
 
-    def robot_sensor_settings(self) -> dict:
-        return deepcopy(hdd_config_file['simulation']['robot']['sensor'])
+    def robot_sensor_settings(self, robot_group_id: int) -> dict:
+        return deepcopy(hdd_config_file['simulation']['robots'][robot_group_id]['sensor'])
 
-    def robot_comm_settings(self) -> dict:
-        return deepcopy(hdd_config_file['simulation']['robot']['comms'])
+    def robot_comm_settings(self, robot_group_id: int) -> dict:
+        return deepcopy(hdd_config_file['simulation']['robots'][robot_group_id]['comms'])
 
-    def robot_name_gen_parameters(self) -> list[list[str]]:
-        return deepcopy(hdd_config_file['simulation']['robot']['name_generator'])
+    def robot_name_gen_parameters(self, robot_group_id: int) -> list[list[str]]:
+        return deepcopy(hdd_config_file['simulation']['robots'][robot_group_id]['name_generator'])
 
     def __str__(self) -> str:
         return yaml.dump(deepcopy(hdd_config_file))

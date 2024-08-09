@@ -42,6 +42,7 @@ class GameView(arcade.View):
 
         self.grid = None
         self.wall_list = None
+        self.robot_group_lists = []
         self.robot_list = None
         self.draw_time = 0
         self.processing_time = 0
@@ -65,15 +66,15 @@ class GameView(arcade.View):
         self.draw_times = []
         self.processing_times = []
 
-    def _build_robot(self):
+    def _build_robot(self, robot_group_id: int):
         """ Call the correct constructor for the desired robot type """
-        robot_type = ExplorerConfig().robot_type()
+        robot_type = ExplorerConfig().robot_type(robot_group_id)
         if robot_type == Robot.TYPE_NAME:
-            return Robot.Robot(self.wall_list)
+            return Robot.Robot(robot_group_id, self.wall_list)
         elif robot_type == RandomRobot.TYPE_NAME:
-            return RandomRobot.RandomRobot(self.wall_list)
+            return RandomRobot.RandomRobot(robot_group_id, self.wall_list)
         elif robot_type == NaiveRandomRobot.TYPE_NAME:
-             return NaiveRandomRobot.NaiveRandomRobot(self.wall_list)
+             return NaiveRandomRobot.NaiveRandomRobot(robot_group_id, self.wall_list)
         raise ValueError(f"Robot type is not recognized: {robot_type}")
 
     def setup(self):
@@ -87,14 +88,19 @@ class GameView(arcade.View):
         self.grid, self.wall_list = MapMaker.generate_map()
 
         # Set up the bots
+        self.robot_group_lists = [arcade.SpriteList(use_spatial_hash=True) for robot_group_id in range(ExplorerConfig().robot_group_count())]
         self.robot_list = arcade.SpriteList(use_spatial_hash=True)
         self.bot_paths = []
-        log_str = "Bot id to name map:\n"
-        for i in range(ExplorerConfig().bot_count()):
-            self.bot_paths.append([])
-            robot_sprite = self._build_robot()
-            self.robot_list.append(robot_sprite)
-            log_str += str(i) + ": " + robot_sprite.name + "\n"
+        log_str = "Bot ID to group ID and name map:\n"
+        robot_ind = 0
+        for robot_group_id in range(ExplorerConfig().robot_group_count()):
+            for i in range(ExplorerConfig().bot_count(robot_group_id)):
+                self.bot_paths.append([])
+                robot_sprite = self._build_robot(robot_group_id)
+                self.robot_group_lists[robot_group_id].append(robot_sprite)
+                self.robot_list.append(robot_sprite)
+                log_str += f"Bot {robot_ind} - Group {robot_group_id} - {robot_sprite.name}\n"
+                robot_ind += 1
         SimLogger().info(log_str)
 
         # Setup the physics engines for collision detection and enforcement
@@ -341,8 +347,5 @@ class GameView(arcade.View):
         plt.axis((0, ExplorerConfig().max_x(), 0, ExplorerConfig().max_y()))
         plt.savefig(ExplorerConfig().output_dir() + "/true_map")
         plt.close(fig)
-
-        with open(ExplorerConfig().output_dir() + "/config.yaml", "w+", encoding="utf-8") as f:
-            f.write(str(ExplorerConfig()))
 
         self.save_statistics()

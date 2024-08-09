@@ -34,6 +34,9 @@ def main():
     # Make sure the output directory exists
     os.makedirs(ExplorerConfig().output_dir(), exist_ok=True)
 
+    with open(ExplorerConfig().output_dir() + "/config.yaml", "w+", encoding="utf-8") as f:
+        f.write(str(ExplorerConfig()))
+
     # Only need to setup the logger once
     setup_sim_logger(args.log_file)
     logger = SimLogger()

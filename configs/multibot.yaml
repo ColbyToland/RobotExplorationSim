@@ -1,8 +1,10 @@
 simulation:
+  bot_count: 5
   sim_steps: 200
 #  split_out_bot_logs: true
   map_generator:
     grid_seed: 1599335621182662412
   robots:
-    - bot_count: 5
-      type: naive_random
+    - type: naive_random
+    - type: base
+      bot_count: 2

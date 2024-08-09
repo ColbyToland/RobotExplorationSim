@@ -7,6 +7,7 @@ from enum import Enum
 
 class GridResolution(Enum):
     """ Setting to adjsut the model vs real world map complexity """
+    NONE = -1
     LOW = 0
     PARITY = 1
     HIGH = 2

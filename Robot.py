@@ -37,13 +37,14 @@ class Robot(arcade.Sprite):
 
     ## Setup ##
 
-    def __init__(self, wall_list: arcade.SpriteList, speed: float=5):
+    def __init__(self, robot_group_id: int, wall_list: arcade.SpriteList, speed: float=5):
         """ Initialization takes care of all setup. There are no additional setup functions. """
 
         drawing_settings = ExplorerConfig().drawing_settings()
         super().__init__(":resources:images/animated_characters/robot/robot_idle.png", drawing_settings['scale'])
 
         self.logger_id = setup_robot_logger()
+        self._robot_group_id = robot_group_id
         self.timer_steps= 0
         self.name = None
         self.gen_name()
@@ -64,7 +65,7 @@ class Robot(arcade.Sprite):
             self.jam_check['position_buffer'].append([self.center_x + i*self.speed, self.center_y + i*self.speed])
 
         # sensors
-        robot_sensor_settings = ExplorerConfig().robot_sensor_settings()
+        robot_sensor_settings = ExplorerConfig().robot_sensor_settings(self._robot_group_id)
         self.laser_width = robot_sensor_settings['beam_grid_scale']*self.grid_size + 1 # +1 to avoid potential problems with exactly 1 grid width
         self.range_finders = []
         max_range = robot_sensor_settings['range_grid_scale']*self.grid_size
@@ -75,19 +76,23 @@ class Robot(arcade.Sprite):
                                                        orientation=i*2*math.pi/robot_sensor_settings['count']))
 
         # map
-        self.map = OccupancyGrid()
+        self.map = OccupancyGrid(ExplorerConfig().robot_map_resolution(self._robot_group_id))
         self.partner_maps = {}
 
         # comms
-        robot_comm_settings = ExplorerConfig().robot_comm_settings()
+        robot_comm_settings = ExplorerConfig().robot_comm_settings(self._robot_group_id)
         self.comm_enabled = True
         self.comm_range = robot_comm_settings['wireless_range_grid_scale']*self.grid_size
         self.comm_update_period = robot_comm_settings['update_period']
 
+    @property
+    def robot_group_id(self):
+        return self._robot_group_id
+
     def gen_name(self):
         """ Randomly generate a unique name from name part lists """
         global assigned_robot_names
-        name_parts = ExplorerConfig().robot_name_gen_parameters()
+        name_parts = ExplorerConfig().robot_name_gen_parameters(self._robot_group_id)
         while not self.name:
             candidate = ""
             for name_part_list in name_parts:

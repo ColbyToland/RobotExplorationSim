@@ -16,8 +16,8 @@ TYPE_NAME = "naive_random"
 class NaiveRandomRobot(Robot.Robot):
     """ Path planning done by random destination selection and A* """
 
-    def __init__(self, wall_list: list[arcade.SpriteList], speed: float=5):
-        super().__init__(wall_list, speed)
+    def __init__(self, robot_group_id: int, wall_list: list[arcade.SpriteList], speed: float=5):
+        super().__init__(robot_group_id, wall_list, speed)
 
         self.bad_destination_count = 0
 

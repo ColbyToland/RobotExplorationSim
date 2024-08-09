@@ -20,7 +20,7 @@ from utils import fTuplePt2, get_line, iTuplePt2
 
 class OccupancyGrid:
     """ Store a model of the world in a grid of observation ratios """
-    def __init__(self):
+    def __init__(self, resolution: GridResolution):
         """ Setup a grid space that summarizes a higher resolution rectangle
 
         max_x -- pixel width
@@ -31,13 +31,14 @@ class OccupancyGrid:
                         - GridResolution.PARITY 1:1
                         - GridResolution.HIGH 4:1
         """
+        assert resolution != GridResolution.NONE
         self.max_x = ExplorerConfig().max_x()
         self.max_y = ExplorerConfig().max_y()
         self.grid_size = ExplorerConfig().grid_size()
         self.resolution_scale = self.grid_size # PARITY
-        if ExplorerConfig().robot_map_resolution() == GridResolution.LOW:
+        if resolution == GridResolution.LOW:
             self.resolution_scale *= 2
-        elif ExplorerConfig().robot_map_resolution() == GridResolution.HIGH:
+        elif resolution == GridResolution.HIGH:
             self.resolution_scale *= 0.5
 
         # Build map
@@ -181,7 +182,14 @@ class OccupancyGrid:
 
     def copy(self) -> Self:
         """ Create an identical occupancy grid """
-        mirror = OccupancyGrid()
+        resolution = GridResolution.NONE
+        if self.resolution_scale == 2*self.grid_size:
+            resolution = GridResolution.LOW
+        elif self.resolution_scale == self.grid_size:
+            resolution = GridResolution.PARITY
+        elif self.resolution_scale == 0.5*self.grid_size:
+            resolution = GridResolution.HIGH
+        mirror = OccupancyGrid(resolution)
         for c in range(self.columns):
             for r in range(self.rows):
                 mirror.map[c][r] = self.map[c][r].copy()
