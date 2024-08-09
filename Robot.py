@@ -37,11 +37,15 @@ class Robot(arcade.Sprite):
 
     ## Setup ##
 
-    def __init__(self, robot_group_id: int, wall_list: arcade.SpriteList, speed: float=5):
+    def __init__(self, 
+                 robot_group_id: int, 
+                 wall_list: arcade.SpriteList, 
+                 speed: float=5, 
+                 img_fname: str=":resources:images/animated_characters/robot/robot_idle.png"):
         """ Initialization takes care of all setup. There are no additional setup functions. """
 
         drawing_settings = ExplorerConfig().drawing_settings()
-        super().__init__(":resources:images/animated_characters/robot/robot_idle.png", drawing_settings['scale'])
+        super().__init__(img_fname, drawing_settings['scale'])
 
         self.logger_id = setup_robot_logger()
         self._robot_group_id = robot_group_id
@@ -207,6 +211,8 @@ class Robot(arcade.Sprite):
             jammed &= manhattan_dist(self.jam_check['position_buffer'][i], self.position) < self.speed
 
         if jammed:
+            logger = RobotLogger(self.logger_id)
+            logger.debug(f"Bot {self.name} is JAMMED at {self.position}")
             candidate_fixes = [[self.center_x+self.grid_size, self.center_y],
                                [self.center_x-self.grid_size, self.center_y],
                                [self.center_x, self.center_y+self.grid_size],
@@ -217,6 +223,7 @@ class Robot(arcade.Sprite):
                     self.center_y = fix[1]
                     self._update_dest()
                     self.jam_check['position_buffer'][self.jam_check['index']] = self.position
+                    logger.debug(f"Bot {self.name} moved out of jam to {self.position}")
 
         self.jam_check['index'] = (self.jam_check['index'] + 1) % len(self.jam_check['position_buffer'])
 
@@ -236,6 +243,7 @@ class Robot(arcade.Sprite):
             physics_engine.update()
         if new_pos != self.position:
             # Async physics can cause bots to get pushed around so pause in place and pick a new path
+            RobotLogger(self.logger_id).debug(f"Bot {self.bot_name} ran into an obstacle at {new_pos} and was pushed back to {self.position}")
             self.position = prev_pos
             self.path = []
             self._get_new_path()

@@ -131,7 +131,6 @@ class ExplorerConfig:
                         # add defaults for each robot group
                         robot_unrecognized_settings = copy_override_dict(hdd_config_file['simulation']['robots'][i], override_config['simulation']['robots'][i])
                         unrecognized_settings['simulation']['robots'].append(robot_unrecognized_settings)
-                print(yaml.dump(unrecognized_settings))
 
     def unrecognized_user_settings(self) -> dict:
         return unrecognized_settings

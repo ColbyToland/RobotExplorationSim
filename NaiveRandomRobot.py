@@ -6,6 +6,7 @@ import arcade
 import math
 
 import Robot
+from SimulationLoggers import RobotLogger
 from utils import LineSegmentCollisionDetector
 import WiFi
 
@@ -65,6 +66,8 @@ class NaiveRandomRobot(Robot.Robot):
 
         # Make sure we don't see an obstruction
         while self._is_next_path_segment_blocked(update_obstructions):
+            if (update_obstructions and attempts == 0) or (not update_obstructions and attempts == 1):
+                RobotLogger(self.logger_id).debug(f"Bot {self.name} is blocked at {self.position} trying to go to [{self.dest_x}, {self.dest_y}]")
             update_obstructions = False
             if attempts < MAX_ATTEMPTS_PER_SIM_STEP:
                 self._get_new_path(update_obstructions)
@@ -72,7 +75,9 @@ class NaiveRandomRobot(Robot.Robot):
                 attempts += 1
             else:
                 # We couldn't find a valid destination this round so 
+                RobotLogger(self.logger_id).debug(f"Bot {self.name} is blocked at {self.position} and couldn't find a valid new position")
                 self.dest_x, self.dest_y = self.position
+                break
 
         if self.center_x == self.dest_x and self.center_y == self.dest_y:
             self.bad_destination_count += 1
