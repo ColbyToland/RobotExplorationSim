@@ -26,11 +26,25 @@ simulation:                             # All things that affect the output imag
     grid_width: 30                      # Map is a grid of walls and open space
     grid_height: 30
     grid_seed: 12345                    # Default is None so the simulation is different every time. Set this to get the same behavior each time.
+    # base: True                          # This is the default choice of map generator
     cellular:                           # Cellular automata based map generation parameters
       start_alive_chance: 0.5           # Each cell's chance to start as a wall
       death_limit: 5                    # Each cell's limit to its "deaths" (wall -> open transition)
       birth_limit: 5                    # Each cell's limit to its "births" (open -> wall transition)
       steps: 5                          # Steps in the cellular automata simulation
+    # manual:                             # All items in points are obstructions
+    #   points:                           # A list of obstruction locations
+    #   - 'x': 0
+    #     'y': 0
+    # image:                              # Generate a map from an image file
+    #   image_file: None                  # The filename for the image. This cannot be None!
+    #   open_cell_color: custom           # The pixel color of open cells. Default white but could be a positional sample px_bl, px_br, px_tl, px_tr, px_center, an HTML color name, or custom
+    #   custom_color:                     # If open_cell_color is custom then this is the color. Each channel is in the range 0 to 255
+    #     r: 0
+    #     g: 0
+    #     b: 255
+    #   scale: 1                          # Scale of the map pixels vs the scale of the image pixels. E.g. at scale 2, a 256x256 image generates a 512x512 map
+    #   ratio: 0                          # Percent of pixels that aren't the open_cell color to identify an obstruction
   robots:                               # Parameters that control all robots
     - bot_count: 1                      # Number of bots of this type to simulate
       type: random                      # Select which robot class to use

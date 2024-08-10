@@ -8,8 +8,6 @@ That includes:
 - Most drawing
 - Termination and saving the results
 
-TODO: Make a WiFi simulator (message passing system) so robots don't need to know about other bots
-
 All other tasks are taken care of by other code (e.g. Robot).
 
 This is the initial code copied from an arcade demo:
@@ -27,13 +25,19 @@ import sys
 import timeit
 
 from ExplorerConfig import ExplorerConfig
-import MapMaker
+from SimulationLoggers import SimLogger
+from WiFi import WiFi
+
+# Robots
 import NaiveRandomRobot
 import PlayerCharacterRobot
 import Robot
 import RandomRobot
-from SimulationLoggers import SimLogger
-from WiFi import WiFi
+
+# Maps
+import ManualMap
+import RandomMap
+import WorldMap
 
 
 class GameView(arcade.View):
@@ -43,7 +47,7 @@ class GameView(arcade.View):
         super().__init__()
 
         self.grid = None
-        self.wall_list = None
+        self.world_map = None
         self.robot_group_lists = []
         self.robot_list = None
         self.draw_time = 0
@@ -72,21 +76,54 @@ class GameView(arcade.View):
         self.draw_times = []
         self.processing_times = []
 
-    def _build_robot(self, robot_group_id: int):
+    def _is_user_bot(self, robot_group_id: int) -> bool:
+        """ To be overridden by users to support user defined Robot children classes """
+        return False
+
+    def _build_user_bot(self, robot_group_id: int) -> Robot.Robot:
+        """ To be overridden by users to support user defined Robot children classes """
+        raise NotImplementedError("_build_user_bot must be implemented if _is_user_bot can return True.")
+
+    def _build_robot(self, robot_group_id: int) -> Robot.Robot:
         """ Call the correct constructor for the desired robot type """
         robot_type = ExplorerConfig().robot_type(robot_group_id)
         if robot_type == Robot.TYPE_NAME:
-            return Robot.Robot(robot_group_id, self.wall_list)
+            return Robot.Robot(robot_group_id, self.world_map.sprite_list)
         elif robot_type == RandomRobot.TYPE_NAME:
-            return RandomRobot.RandomRobot(robot_group_id, self.wall_list)
+            return RandomRobot.RandomRobot(robot_group_id, self.world_map.sprite_list)
         elif robot_type == NaiveRandomRobot.TYPE_NAME:
-            return NaiveRandomRobot.NaiveRandomRobot(robot_group_id, self.wall_list)
+            return NaiveRandomRobot.NaiveRandomRobot(robot_group_id, self.world_map.sprite_list)
         elif robot_type == PlayerCharacterRobot.TYPE_NAME:
             if self.player_sprite is not None:
                 ValueError(f"Only one player sprite allowed! Attempting to make {ExplorerConfig().bot_count(robot_group_id)}")
-            self.player_sprite = PlayerCharacterRobot.PlayerCharacterRobot(robot_group_id, self.wall_list)
+            self.player_sprite = PlayerCharacterRobot.PlayerCharacterRobot(robot_group_id, self.world_map.sprite_list)
             return self.player_sprite
+        elif self._is_user_bot(robot_group_id):
+            return self._build_user_bot(robot_group_id)
         raise ValueError(f"Robot type is not recognized: {robot_type}")
+
+    def _is_user_map(self, map_type: str) -> bool:
+        """ To be overridden by users to support user defined Robot children classes """
+        return False
+
+    def _build_user_map(self, map_type: str):
+        """ To be overridden by users to support user defined Robot children classes """
+        raise NotImplementedError("_build_user_map must be implemented if _is_user_map can return True.")
+
+    def _build_world(self):
+        map_type = ExplorerConfig().map_generator_type()
+        if map_type == WorldMap.TYPE_NAME:
+            self.world_map = WorldMap.WorldMap()
+        elif map_type == RandomMap.TYPE_NAME:
+            self.world_map = RandomMap.RandomMap()
+        elif map_type == ManualMap.TYPE_NAME:
+            self.world_map = ManualMap.ManualMap()
+        # elif map_type == ImageMap.TYPE_NAME:
+        #     self.world_map = ImageMap.ImageMap()
+        elif self._is_user_map(map_type):
+            self._build_user_map(map_type)
+        else:
+            raise ValueError(f"Unrecognized map type: {map_type}")
 
     def setup(self):
         """ Most values initialized here in anticipation of a simulation restart in the future. """
@@ -99,7 +136,7 @@ class GameView(arcade.View):
             self.video = cv2.VideoWriter(ExplorerConfig().output_dir() + '/robot_sim.avi', fourcc, 20, (self.window.width, self.window.height))
 
         # Create cave system using a 2D grid
-        self.grid, self.wall_list = MapMaker.generate_map()
+        self._build_world()
 
         # Set up the bots
         self.robot_group_lists = [arcade.SpriteList(use_spatial_hash=True) for robot_group_id in range(ExplorerConfig().robot_group_count())]
@@ -120,7 +157,7 @@ class GameView(arcade.View):
         # Setup the physics engines for collision detection and enforcement
         # Arcade's simple engine only supports acting on one sprite at a time
         for robot_sprite in self.robot_list:
-            engine = arcade.PhysicsEngineSimple(robot_sprite, [self.wall_list, self.robot_list])
+            engine = arcade.PhysicsEngineSimple(robot_sprite, [self.world_map.sprite_list, self.robot_list])
             engine.update() # significantly reduces the chances of a bad initial position
             self.physics_engines.append(engine)
 
@@ -128,7 +165,7 @@ class GameView(arcade.View):
         self.scroll_to_robot(1.0)
 
         # Draw info on the screen
-        sprite_count = len(self.wall_list)
+        sprite_count = len(self.world_map.sprite_list)
         output = f"Sprite Count: {sprite_count:,}"
         self.sprite_count_text = arcade.Text(output,
                                              20,
@@ -157,7 +194,7 @@ class GameView(arcade.View):
         self.clear()
         self.camera_sprites.use()
 
-        self.wall_list.draw()
+        self.world_map.draw()
 
         # Draw the paths over the walls and under the bots
         for robot_sprite in self.robot_list:
@@ -297,9 +334,9 @@ class GameView(arcade.View):
         async def async_sensor_update():
             async with asyncio.TaskGroup() as tg:
                 for robot_sprite in self.robot_list:
-                    tg.create_task(robot_sprite.sensor_update([self.wall_list, self.robot_list]))
+                    tg.create_task(robot_sprite.sensor_update([self.world_map.sprite_list, self.robot_list]))
         async def sync_sensor_update(a_sprite):
-            await a_sprite.sensor_update([self.wall_list, self.robot_list])
+            await a_sprite.sensor_update([self.world_map.sprite_list, self.robot_list])
 
         if async_params['use_async']:
             asyncio.run(async_sensor_update())
@@ -320,7 +357,7 @@ class GameView(arcade.View):
             f.write(f"Random Seed: {seed}\n")
             bot_count = len(self.robot_list)
             f.write(f"Bot Count: {bot_count}\n")
-            sprite_count = len(self.wall_list) + bot_count
+            sprite_count = len(self.world_map.sprite_list) + bot_count
             f.write(f"Sprite Count: {sprite_count}\n")
             steps = self.timer_steps-1
             f.write(f"Simulation Steps: {steps}\n")
@@ -365,7 +402,7 @@ class GameView(arcade.View):
 
         # Save the actual map and robot paths
         true_map = []
-        for wall_sprite in self.wall_list:
+        for wall_sprite in self.world_map.sprite_list:
             true_map.append(wall_sprite.position)
         true_map = np.array(true_map).T
         fig = plt.figure()

@@ -4,6 +4,11 @@ simulation:
 #  save_video: true
   map_generator:
     grid_seed: 1599335621182662412
+    cellular:
+      start_alive_chance: 0.4
+      death_limit: 4
+      birth_limit: 4
+      steps: 5
   robots:
-    - bot_count: 5
-      type: naive_random
+  - bot_count: 5
+    type: naive_random

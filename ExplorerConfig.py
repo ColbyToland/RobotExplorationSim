@@ -55,6 +55,27 @@ DefaultRobotConfig = {
         ]
     }
 
+DefaultMapConfigs = {
+    'base': {},
+    'cellular': {
+        'start_alive_chance': 0.4,
+        'death_limit': 4,
+        'birth_limit': 4,
+        'steps': 4
+    },
+    'manual': {
+        'points': [{'x': 0, 'y': 0}],
+        'px_not_indices': False
+    },
+    'image': {
+        'image_file': None, # This is invalid!
+        'open_cell_color': 'white',
+        'custom_color': {'r': 255, 'g':255, 'b':255},
+        'scale': 1,
+        'ratio': 0 # percent of pixels that aren't the open_cell color to identify an obstruction
+    }
+}
+
 DefaultExplorerConfig = {
     'window': {
         'width': 800,
@@ -85,12 +106,6 @@ DefaultExplorerConfig = {
             'grid_width': 40,
             'grid_height': 40,
             'grid_seed': None,
-            'cellular': {
-                'start_alive_chance': 0.4,
-                'death_limit': 4,
-                'birth_limit': 4,
-                'steps': 4
-                }
             },
         'robots': []
         }
@@ -104,6 +119,30 @@ class ExplorerConfig:
         global hdd_config_file
         if hdd_config_file is None:
             hdd_config_file = deepcopy(DefaultExplorerConfig)
+
+    def _set_robot_config(self, override_config: dict):
+        global hdd_config_file
+        global unrecognized_settings
+        hdd_config_file['simulation']['robots'] = [deepcopy(DefaultRobotConfig)]
+        if is_valid_key_chain(override_config, ['simulation', 'robots']):
+            unrecognized_settings.setdefault('simulation', {})['robots'] = []
+            hdd_config_file['simulation']['robots'] = [deepcopy(DefaultRobotConfig) for i in range(len(override_config['simulation']['robots']))]
+
+            for i in range(len(override_config['simulation']['robots'])):
+                # add defaults for each robot group
+                robot_unrecognized_settings = copy_override_dict(hdd_config_file['simulation']['robots'][i], override_config['simulation']['robots'][i])
+                if 'type' in override_config['simulation']['robots'][i] and override_config['simulation']['robots'][i]['type'] == 'pc':
+                    hdd_config_file['simulation']['robots'][i]['bot_count'] = 1
+                unrecognized_settings['simulation']['robots'].append(robot_unrecognized_settings)
+
+    def _set_map_gen_config(self, override_config: dict):
+        global hdd_config_file
+        global unrecognized_settings
+        if is_valid_key_chain(override_config, ['simulation', 'map_generator']):
+            for key, defaultconfig in DefaultMapConfigs.items():
+                if key in override_config['simulation']['map_generator']:
+                    hdd_config_file['simulation']['map_generator'][key] = deepcopy(defaultconfig)
+            unrecognized_settings.setdefault('simulation', {})['map_generator'] = copy_override_dict(hdd_config_file['simulation']['map_generator'], override_config['simulation']['map_generator'])
 
     def set_config(self, fname: Optional[str]):
         global hdd_config_file
@@ -119,21 +158,14 @@ class ExplorerConfig:
                     # Do this before the override copy so the user config still overrides this
                     hdd_config_file['simulation']['async_physics'] = False
 
-                # Setup all settings except the robot groups
+                # Setup all settings except the robot groups and map settings
                 unrecognized_settings = copy_override_dict(hdd_config_file, override_config)
 
                 # Copy robot settings
-                hdd_config_file['simulation']['robots'] = [deepcopy(DefaultRobotConfig)]
-                if is_valid_key_chain(override_config, ['simulation', 'robots']):
-                    unrecognized_settings.setdefault('simulation', {})['robots'] = []
-                    hdd_config_file['simulation']['robots'] = [deepcopy(DefaultRobotConfig) for i in range(len(override_config['simulation']['robots']))]
+                self._set_robot_config(override_config)
 
-                    for i in range(len(override_config['simulation']['robots'])):
-                        # add defaults for each robot group
-                        robot_unrecognized_settings = copy_override_dict(hdd_config_file['simulation']['robots'][i], override_config['simulation']['robots'][i])
-                        if 'type' in override_config['simulation']['robots'][i] and override_config['simulation']['robots'][i]['type'] == 'pc':
-                            hdd_config_file['simulation']['robots'][i]['bot_count'] = 1
-                        unrecognized_settings['simulation']['robots'].append(robot_unrecognized_settings)
+                # Copy map generation settings
+                self._set_map_gen_config(override_config)
 
     def unrecognized_user_settings(self) -> dict:
         return unrecognized_settings
@@ -183,6 +215,13 @@ class ExplorerConfig:
             hdd_config_file['simulation']['map_generator']['grid_seed'] = random.randrange(sys.maxsize)
             params['grid_seed'] = hdd_config_file['simulation']['map_generator']['grid_seed']
         return params
+
+    def map_generator_type(self) -> str:
+        params = hdd_config_file['simulation']['map_generator']
+        for key, defaultconfig in DefaultMapConfigs.items():
+            if key in params:
+                return key
+        return 'base'
 
     def max_x(self) -> int:
         return int(self.map_generator_settings()['grid_width'] * self.grid_size())
