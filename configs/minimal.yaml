@@ -4,11 +4,21 @@ simulation:
 #  save_video: true
   map_generator:
     grid_seed: 1599335621182662412
-    cellular:
-      start_alive_chance: 0.4
-      death_limit: 4
-      birth_limit: 4
-      steps: 5
+    # cellular:
+    #   start_alive_chance: 0.4
+    #   death_limit: 4
+    #   birth_limit: 4
+    #   steps: 5
+    image:
+      image_file: bw_map.png
+      #open_cell_color: blue
+      custom_color:
+        r: 0
+        g: 0
+        b: 0
+      scale: 0.5
+      ratio: 0
+      draw_style: overlay
   robots:
   - bot_count: 5
     type: naive_random

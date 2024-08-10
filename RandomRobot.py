@@ -3,7 +3,6 @@ This robot randomly selects a destination, navigates to it with A*, then selects
 """
 
 import arcade
-import math
 
 import Robot
 import WiFi

@@ -8,7 +8,6 @@ https://gamedevelopment.tutsplus.com/tutorials/generate-random-cave-levels-using
 python -m arcade.examples.procedural_caves_cellular
 """
 
-import arcade
 import random
 
 from ExplorerConfig import ExplorerConfig

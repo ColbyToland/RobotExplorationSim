@@ -72,7 +72,8 @@ DefaultMapConfigs = {
         'open_cell_color': 'white',
         'custom_color': {'r': 255, 'g':255, 'b':255},
         'scale': 1,
-        'ratio': 0 # percent of pixels that aren't the open_cell color to identify an obstruction
+        'ratio': 0, # percent of pixels that aren't the open_cell color to identify an obstruction
+        'draw_style': 'image'
     }
 }
 
@@ -222,6 +223,14 @@ class ExplorerConfig:
             if key in params:
                 return key
         return 'base'
+
+    def set_map_grid_width(self, width: int):
+        global hdd_config_file
+        hdd_config_file['simulation']['map_generator']['grid_width'] = width
+
+    def set_map_grid_height(self, height: int):
+        global hdd_config_file
+        hdd_config_file['simulation']['map_generator']['grid_height'] = height
 
     def max_x(self) -> int:
         return int(self.map_generator_settings()['grid_width'] * self.grid_size())

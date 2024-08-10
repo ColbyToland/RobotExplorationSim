@@ -35,6 +35,7 @@ import Robot
 import RandomRobot
 
 # Maps
+import ImageMap
 import ManualMap
 import RandomMap
 import WorldMap
@@ -118,8 +119,8 @@ class GameView(arcade.View):
             self.world_map = RandomMap.RandomMap()
         elif map_type == ManualMap.TYPE_NAME:
             self.world_map = ManualMap.ManualMap()
-        # elif map_type == ImageMap.TYPE_NAME:
-        #     self.world_map = ImageMap.ImageMap()
+        elif map_type == ImageMap.TYPE_NAME:
+            self.world_map = ImageMap.ImageMap()
         elif self._is_user_map(map_type):
             self._build_user_map(map_type)
         else:

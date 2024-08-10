@@ -45,6 +45,7 @@ simulation:                             # All things that affect the output imag
     #     b: 255
     #   scale: 1                          # Scale of the map pixels vs the scale of the image pixels. E.g. at scale 2, a 256x256 image generates a 512x512 map
     #   ratio: 0                          # Percent of pixels that aren't the open_cell color to identify an obstruction
+    #   display: obstructions             # Display the image, obstructions, or overlay of obstructions on the image
   robots:                               # Parameters that control all robots
     - bot_count: 1                      # Number of bots of this type to simulate
       type: random                      # Select which robot class to use
