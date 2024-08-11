@@ -44,6 +44,8 @@ import WorldMap
 class GameView(arcade.View):
     """ View responsible for running the simulation """
 
+    # Setup
+
     def __init__(self):
         super().__init__()
 
@@ -115,6 +117,7 @@ class GameView(arcade.View):
         raise NotImplementedError("_build_user_map must be implemented if _is_user_map can return True.")
 
     def _build_world(self):
+        """ Convert the map string to a map object """
         map_type = ExplorerConfig().map_generator_type()
         if map_type == WorldMap.TYPE_NAME:
             self.world_map = WorldMap.WorldMap()
@@ -188,6 +191,9 @@ class GameView(arcade.View):
                                                 self.window.height - 60,
                                                 arcade.color.WHITE, 16)
 
+
+    # Drawing
+
     def on_draw(self):
         """ Render the screen. """
 
@@ -226,12 +232,12 @@ class GameView(arcade.View):
             output = f"Drawing time: {self.draw_time:.3f}"
             self.draw_time_text.text = output
             self.draw_time_text.draw()
-            self.draw_times.append(self.draw_time)
 
             output = f"Processing time: {self.processing_time:.3f}"
             self.processing_time_text.text = output
             self.processing_time_text.draw()
-            self.processing_times.append(self.processing_time)
+        self.draw_times.append(self.draw_time)
+        self.processing_times.append(self.processing_time)
 
         if ExplorerConfig().save_video():
             img = cv2.cvtColor(np.array(arcade.get_image()), cv2.COLOR_RGB2BGR)
@@ -274,6 +280,9 @@ class GameView(arcade.View):
         self.camera_sprites.resize(int(width), int(height))
         self.camera_gui.resize(int(width), int(height))
 
+
+    # UI
+
     def on_key_press(self, key, modifiers):
         """ Delegate key presses to the player robot if it exists """
         if key == arcade.key.I:
@@ -289,6 +298,9 @@ class GameView(arcade.View):
         """ Delegate key presses to the player robot if it exists """
         if self.player_sprite is not None:
             self.player_sprite.on_key_release(key, modifiers)
+
+
+    # Simulation updates
 
     def on_update(self, delta_time):
         """ Movement and game logic """
@@ -363,6 +375,9 @@ class GameView(arcade.View):
 
         # Save the time it took to do this.
         self.processing_time = timeit.default_timer() - start_time
+
+
+    # Save outputs
 
     def save_statistics(self):
         """ Store numeric statistics for comparing simulations """

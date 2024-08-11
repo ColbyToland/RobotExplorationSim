@@ -70,9 +70,8 @@ class Robot(arcade.Sprite):
         self.path = []
         self.replan_on_collision = True
 
-        self.jam_check = {'position_buffer': [], 'index':0}
-        for i in range(10):
-            self.jam_check['position_buffer'].append([self.center_x + i*self.speed, self.center_y + i*self.speed])
+        # populate the buffer history with positions that won't trigger the jam detector
+        self.jam_check = {'position_buffer': [[self.center_x + i*self.speed, self.center_y + i*self.speed] for i in range(10)], 'index':0}
 
         # sensors
         robot_sensor_settings = ExplorerConfig().robot_sensor_settings(self._robot_group_id)
@@ -143,8 +142,7 @@ class Robot(arcade.Sprite):
         return cell_status == GridCellStatus.UNEXPLORED or cell_status == GridCellStatus.CLEAR
 
     def _is_position_unknown_in_occupancy_grid(self, pos: PtType) -> bool:
-        cell_status = self.map.get_cell(pos[0], pos[1]).status()
-        return cell_status == GridCellStatus.UNEXPLORED or cell_status == GridCellStatus.CLEAR
+        return self.map.get_cell(pos[0], pos[1]).status() == GridCellStatus.UNEXPLORED
 
     def _get_position(self, test_func: FunctionType) -> fTuplePt2:
         """ Randomly select a valid position that meets the test condition """
@@ -206,8 +204,34 @@ class Robot(arcade.Sprite):
     ## Updates ##
 
     def _update_dest(self):
+        """ Get the next destination, no update in the base robot """
         self.dest_x = self.center_x
         self.dest_y = self.center_y
+
+    def _check_and_fix_jammed_robot(self):
+        """ Sometimes the bots can get jammed where the physics engine won't let them move so this teleports them to a nearby position so they can continue operation """
+        self.jam_check['position_buffer'][self.jam_check['index']] = self.position
+
+        jammed = True
+        for i in range(len(self.jam_check['position_buffer'])):
+            jammed &= manhattan_dist(self.jam_check['position_buffer'][i], self.position) < self.speed
+
+        if jammed:
+            logger = RobotLogger(self.logger_id)
+            logger.debug(f"Bot {self.name} is JAMMED at {self.position}")
+            candidate_fixes = [[self.center_x+self.grid_size, self.center_y],
+                               [self.center_x-self.grid_size, self.center_y],
+                               [self.center_x, self.center_y+self.grid_size],
+                               [self.center_x, self.center_y-self.grid_size]]
+            for fix in candidate_fixes:
+                if self._is_position_valid(fix):
+                    self.center_x = fix[0]
+                    self.center_y = fix[1]
+                    self._update_dest()
+                    self.jam_check['position_buffer'][self.jam_check['index']] = self.position
+                    logger.debug(f"Bot {self.name} moved out of jam to {self.position}")
+
+        self.jam_check['index'] = (self.jam_check['index'] + 1) % len(self.jam_check['position_buffer'])
 
     async def _update(self, wifi: WiFi.WiFi):
         """ Base robot doesn't move automatically """
@@ -218,6 +242,8 @@ class Robot(arcade.Sprite):
         await self.update_comm_partners(wifi)
 
     def update_speed(self):
+        """ Set the speed based on the destination and current position """
+
         # X and Y diff between the two
         self.change_x = self.dest_x - self.center_x
         self.change_y = self.dest_y - self.center_y
@@ -228,12 +254,14 @@ class Robot(arcade.Sprite):
             self.change_y = math.copysign(self.speed, self.change_y)
 
     def handle_collision(self, hit_list: list[arcade.Sprite]):
+        """ Adjust the robot actions when it hits an obstacle """
         if hit_list:
             RobotLogger(self.logger_id).debug(f"Bot {self.name} ran into an obstacle at {self.position}")
             if self.replan_on_collision:
                 self.path = []
                 self._get_new_path()
                 self.dest_x, self.dest_y = self.path.pop(0)
+            self._check_and_fix_jammed_robot()
 
     async def update(self, wifi: WiFi.WiFi, physics_engine: Optional[arcade.PhysicsEngineSimple]=None):
         await self._update(wifi)
