@@ -71,21 +71,24 @@ class ImageMap(WorldMap):
         if color_str == 'custom':
             self.open_cell_color = np.array([custom_color['r'], custom_color['g'], custom_color['b']])
         elif color_str in self.POSITION_COLOR_STRS:
-            self.open_cell_color = self._get_position_color(color_str)
+            self._get_position_color(color_str)
         elif colors.is_color_like(color_str): # convertable color string
             c = colors.to_rgb(color_str)
             self.open_cell_color = np.array([int(c[0]*255), int(c[1]*255), int(c[2]*255)])
         else:
             self.open_cell_color = np.array([255,255,255]) # Default to white
 
-    def _open_cell_color_ratio(self, subimg: np.ndarray) -> float:
+    def _open_cell_color_ratio(self, subimg: np.array) -> float:
         """ Ratio of pixels that are the open cell color """
         px_count = 0
         open_px_count = 0
+        test_mat = subimg[:,:,0] == self.open_cell_color[0]
+        test_mat = test_mat == (subimg[:,:,1] == self.open_cell_color[1])
+        test_mat = test_mat == (subimg[:,:,2] == self.open_cell_color[2])
         for x in range(subimg.shape[1]):
             for y in range(subimg.shape[0]):
                 px_count += 1
-                if np.array_equal(subimg[y,x], self.open_cell_color):
+                if test_mat[y,x]:
                     open_px_count += 1
         return open_px_count / px_count
 
