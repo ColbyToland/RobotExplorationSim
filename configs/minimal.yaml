@@ -21,5 +21,6 @@ simulation:
       ratio: 0
       draw_style: overlay
   robots:
-  - bot_count: 5
-    type: naive_random
+  # - bot_count: 5
+  #   type: random
+  - type: pc

@@ -38,14 +38,14 @@ class ImageMap(WorldMap):
         self.img = cv2.resize(self.img, (0,0), fx=self.scale, fy=self.scale)
 
         # Map size in settings is ignored and is instead basd on image size
-        self.columns = int(math.floor((self.img.shape[1]-1) / self.grid_size))
-        self.rows = int(math.floor((self.img.shape[0]-1) / self.grid_size))
+        self.columns = int(math.ceil((self.img.shape[1]-1) / self.grid_size))
+        self.rows = int(math.ceil((self.img.shape[0]-1) / self.grid_size))
         ExplorerConfig().set_map_grid_width(self.columns)
         ExplorerConfig().set_map_grid_height(self.rows)
 
         self.bg_sprite = arcade.Sprite(settings['image_file'], self.scale)
-        self.bg_sprite.center_x = ExplorerConfig().max_x()/2
-        self.bg_sprite.center_y = ExplorerConfig().max_y()/2
+        self.bg_sprite.center_x = (self.img.shape[1]-1)/2
+        self.bg_sprite.center_y = (self.img.shape[0]-1)/2
 
         self._create_map()
 
@@ -60,8 +60,8 @@ class ImageMap(WorldMap):
         elif color_str == 'px_tr':
             self.open_cell_color = self.img[0,-1]
         elif color_str == 'px_center':
-            x = int(img.shape[1]/2)
-            y = int(img.shape[0]/2)
+            x = int(self.img.shape[1]/2)
+            y = int(self.img.shape[0]/2)
             self.open_cell_color = self.img[y, x]
         else:
             self.open_cell_color = np.array([255,255,255]) # Default to white
@@ -85,11 +85,8 @@ class ImageMap(WorldMap):
         test_mat = subimg[:,:,0] == self.open_cell_color[0]
         test_mat = test_mat == (subimg[:,:,1] == self.open_cell_color[1])
         test_mat = test_mat == (subimg[:,:,2] == self.open_cell_color[2])
-        for x in range(subimg.shape[1]):
-            for y in range(subimg.shape[0]):
-                px_count += 1
-                if test_mat[y,x]:
-                    open_px_count += 1
+        open_px_count = test_mat.sum()
+        px_count = test_mat.shape[0]*test_mat.shape[1]
         return open_px_count / px_count
 
     def _initialize_grid(self):
@@ -98,8 +95,8 @@ class ImageMap(WorldMap):
             for r in range(self.rows):
                 start_x = int(c*self.grid_size)
                 start_y = int((self.rows-1-r)*self.grid_size)
-                end_x = int(start_x + self.grid_size)
-                end_y = int(start_y + self.grid_size)
+                end_x = int(start_x + min(self.grid_size, self.img.shape[1]-start_x-1))
+                end_y = int(start_y + min(self.grid_size, self.img.shape[0]-start_y-1))
                 grid_img = self.img[start_y:end_y, start_x:end_x]
                 if self._open_cell_color_ratio(grid_img) < (1-self.ratio):
                     self.grid[c][r] = 1
@@ -108,7 +105,9 @@ class ImageMap(WorldMap):
         """ Draw the image, the generated obstacles, or the overlay of obstacles on the image """
         if self.draw_style == 'image' or self.draw_style == 'overlay':
             self.bg_sprite.draw()
+            # BUG: Image doesn't align with obstacles. This seems like a rendering problem of the background sprite
+            #       or possibly a problem aligning the downsampled grid to the bg image sprite
         if self.draw_style == 'overlay':
-            self.sprite_list.draw_hit_boxes()
+            self.sprite_list.draw_hit_boxes(color=arcade.color.RED)
         elif self.draw_style == 'obstructions':
             self.sprite_list.draw()
