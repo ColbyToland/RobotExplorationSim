@@ -5,7 +5,6 @@ This robot randomly selects a destination, navigates to it with A*, then selects
 import arcade
 
 import Robot
-import WiFi
 
 
 TYPE_NAME = "pc"
@@ -54,10 +53,8 @@ class PlayerCharacterRobot(Robot.Robot):
         """ Disable jam checking """
         pass
 
-    async def _update(self, wifi: WiFi.WiFi):
-        """ Update the next target location if needed, the current position, and communication """
-
-        self.timer_steps += 1
+    def update_speed(self):
+        """ Update the player speed """
 
         # Calculate speed based on the keys pressed
         self.change_x = 0
@@ -71,5 +68,3 @@ class PlayerCharacterRobot(Robot.Robot):
             self.change_x = -self.speed
         elif self.right_pressed and not self.left_pressed:
             self.change_x = self.speed
-
-        await self.update_comm_partners(wifi)
