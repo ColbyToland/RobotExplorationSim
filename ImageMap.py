@@ -109,5 +109,5 @@ class ImageMap(WorldMap):
             #       or possibly a problem aligning the downsampled grid to the bg image sprite
         if self.draw_style == 'overlay':
             self.sprite_list.draw_hit_boxes(color=arcade.color.RED)
-        elif self.draw_style == 'obstructions':
+        elif self.draw_style != 'image':
             self.sprite_list.draw()

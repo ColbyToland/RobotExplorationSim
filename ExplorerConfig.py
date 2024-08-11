@@ -73,7 +73,7 @@ DefaultMapConfigs = {
         'custom_color': {'r': 255, 'g':255, 'b':255},
         'scale': 1,
         'ratio': 0, # percent of pixels that aren't the open_cell color to identify an obstruction
-        'draw_style': 'obstacles'
+        'draw_style': 'obstructions'
     }
 }
 
@@ -100,7 +100,7 @@ DefaultExplorerConfig = {
         'log_file': 'simulation.log',
         'split_out_bot_logs': False,
         'save_video': False,
-        'sim_steps': 200,
+        'sim_steps': 0,
         'use_async': True,
         'async_physics': True,
         'map_generator': {
@@ -156,11 +156,6 @@ class ExplorerConfig:
         if fname is not None:
             with open(fname, 'r') as file:
                 override_config = yaml.safe_load(file)
-
-                if is_valid_key_chain(override_config, ['simulation', 'map_generator', 'grid_seed']) and override_config['simulation']['map_generator']['grid_seed']:
-                    # If there is a random seed in the config file then default async_physics off
-                    # Do this before the override copy so the user config still overrides this
-                    hdd_config_file['simulation']['async_physics'] = False
 
                 # Setup all settings except the robot groups and map settings
                 unrecognized_settings = copy_override_dict(hdd_config_file, override_config)

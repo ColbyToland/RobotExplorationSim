@@ -58,6 +58,9 @@ class GameView(arcade.View):
         self.bot_paths = None
         self.video = None
 
+        self.show_stats = False
+        self.quit = False
+
         # Special bot for camera actions and keyboard events
         self.player_sprite = None
 
@@ -217,16 +220,18 @@ class GameView(arcade.View):
         # Select the (unscrolled) camera for our GUI
         self.camera_gui.use()
 
-        self.sprite_count_text.draw()
-        output = f"Drawing time: {self.draw_time:.3f}"
-        self.draw_time_text.text = output
-        self.draw_time_text.draw()
-        self.draw_times.append(self.draw_time)
+        if self.show_stats:
+            self.sprite_count_text.draw()
 
-        output = f"Processing time: {self.processing_time:.3f}"
-        self.processing_time_text.text = output
-        self.processing_time_text.draw()
-        self.processing_times.append(self.processing_time)
+            output = f"Drawing time: {self.draw_time:.3f}"
+            self.draw_time_text.text = output
+            self.draw_time_text.draw()
+            self.draw_times.append(self.draw_time)
+
+            output = f"Processing time: {self.processing_time:.3f}"
+            self.processing_time_text.text = output
+            self.processing_time_text.draw()
+            self.processing_times.append(self.processing_time)
 
         if ExplorerConfig().save_video():
             img = cv2.cvtColor(np.array(arcade.get_image()), cv2.COLOR_RGB2BGR)
@@ -271,7 +276,13 @@ class GameView(arcade.View):
 
     def on_key_press(self, key, modifiers):
         """ Delegate key presses to the player robot if it exists """
-        if self.player_sprite is not None:
+        if key == arcade.key.I:
+            # Toggle showing stat info
+            self.show_stats = not self.show_stats
+        elif key == arcade.key.ESCAPE:
+            # End simulation
+            self.quit = True
+        elif self.player_sprite is not None:
             self.player_sprite.on_key_press(key, modifiers)
 
     def on_key_release(self, key, modifiers):
@@ -283,7 +294,7 @@ class GameView(arcade.View):
         """ Movement and game logic """
 
         # Shutdown and save results when the timer expires
-        if self.timer_steps >= ExplorerConfig().sim_steps():
+        if self.quit or (ExplorerConfig().sim_steps() != 0 and self.timer_steps >= ExplorerConfig().sim_steps()):
             SimLogger().info(f"Reached end of simulation. {self.timer_steps} steps over {timeit.default_timer()-self.start_time} seconds")
             self.save_results()
             sys.exit()
@@ -315,12 +326,14 @@ class GameView(arcade.View):
             else:
                 asyncio.run(async_robot_update())
                 for i in range(len(self.physics_engines)):
-                    self.physics_engines[i].update()
+                    hit_obstacles = self.physics_engines[i].update()
+                    self.robot_list[i].handle_collision(hit_obstacles)
         else:
             for robot_sprite in self.robot_list:
                 asyncio.run(sync_robot_update(robot_sprite))
             for i in range(len(self.physics_engines)):
-                self.physics_engines[i].update()
+                hit_obstacles = self.physics_engines[i].update()
+                self.robot_list[i].handle_collision(hit_obstacles)
 
         # Store the robot positions to plot their trail later
         for i in range(len(self.robot_list)):

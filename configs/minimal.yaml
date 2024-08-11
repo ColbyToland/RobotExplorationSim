@@ -10,17 +10,8 @@ simulation:
     #   birth_limit: 4
     #   steps: 5
     image:
-      #image_file: bw_map.png
-      image_file: red_blue_map.png
-      open_cell_color: custom
-      custom_color:
-        r: 0
-        g: 38
-        b: 255
-      scale: 0.5
-      ratio: 0
-      draw_style: overlay
+      image_file: bw_map.png
+      draw_style: magic
   robots:
-  # - bot_count: 5
-  #   type: random
-  - type: pc
+  - bot_count: 3
+    type: naive_random

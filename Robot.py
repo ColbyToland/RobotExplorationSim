@@ -209,30 +209,6 @@ class Robot(arcade.Sprite):
         self.dest_x = self.center_x
         self.dest_y = self.center_y
 
-    def _check_and_fix_jammed_robot(self):
-        self.jam_check['position_buffer'][self.jam_check['index']] = self.position
-
-        jammed = True
-        for i in range(len(self.jam_check['position_buffer'])):
-            jammed &= manhattan_dist(self.jam_check['position_buffer'][i], self.position) < self.speed
-
-        if jammed:
-            logger = RobotLogger(self.logger_id)
-            logger.debug(f"Bot {self.name} is JAMMED at {self.position}")
-            candidate_fixes = [[self.center_x+self.grid_size, self.center_y],
-                               [self.center_x-self.grid_size, self.center_y],
-                               [self.center_x, self.center_y+self.grid_size],
-                               [self.center_x, self.center_y-self.grid_size]]
-            for fix in candidate_fixes:
-                if self._is_position_valid(fix):
-                    self.center_x = fix[0]
-                    self.center_y = fix[1]
-                    self._update_dest()
-                    self.jam_check['position_buffer'][self.jam_check['index']] = self.position
-                    logger.debug(f"Bot {self.name} moved out of jam to {self.position}")
-
-        self.jam_check['index'] = (self.jam_check['index'] + 1) % len(self.jam_check['position_buffer'])
-
     async def _update(self, wifi: WiFi.WiFi):
         """ Base robot doesn't move automatically """
 
@@ -251,20 +227,20 @@ class Robot(arcade.Sprite):
         if abs(self.change_y) > self.speed:
             self.change_y = math.copysign(self.speed, self.change_y)
 
-    async def update(self, wifi: WiFi.WiFi, physics_engine: Optional[arcade.PhysicsEngineSimple]=None):
-        await self._update(wifi)
-        self.update_speed()
-        hit_obstacle = []
-        if physics_engine:
-            hit_obstacle = physics_engine.update()
-            # BUG: When the position isn't updated there is no hit obstacle returned!
-        if hit_obstacle:
+    def handle_collision(self, hit_list: list[arcade.Sprite]):
+        if hit_list:
             RobotLogger(self.logger_id).debug(f"Bot {self.name} ran into an obstacle at {self.position}")
             if self.replan_on_collision:
                 self.path = []
                 self._get_new_path()
                 self.dest_x, self.dest_y = self.path.pop(0)
-            self._check_and_fix_jammed_robot()
+
+    async def update(self, wifi: WiFi.WiFi, physics_engine: Optional[arcade.PhysicsEngineSimple]=None):
+        await self._update(wifi)
+        self.update_speed()
+        if physics_engine:
+            hit_obstacles = physics_engine.update()
+            self.handle_collision(hit_obstacles)
 
     async def sensor_update(self, obstructions: list[arcade.SpriteList]):
         """ Simulate each range finder based on the simulated world """

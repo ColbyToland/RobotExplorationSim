@@ -49,10 +49,6 @@ class PlayerCharacterRobot(Robot.Robot):
         elif key == arcade.key.RIGHT:
             self.right_pressed = False
 
-    def _check_and_fix_jammed_robot(self):
-        """ Disable jam checking """
-        pass
-
     def update_speed(self):
         """ Update the player speed """
 
