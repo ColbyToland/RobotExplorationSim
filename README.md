@@ -21,7 +21,7 @@ A custom simulation:
 
     python3 explorer.py configs/minimal.py
 
-The `configs/base.yaml` should have all adjustable values. In a custom config YAML you don't need all values, just the ones you'd like to override. (Note that `base.yaml` does not represent the default values because it's used in testing/validating the config reader.)
+The `configs/base.yaml` should have all adjustable values. In a custom config YAML you don't need all values, just the ones you'd like to override. (Note that `base.yaml` does not represent the default values. It's best to refer to `ExplorerConfig.py` for the default values.)
 
 ## Results
 The simulation ends with 4 types of output in an `output` directory:
@@ -32,5 +32,10 @@ The simulation ends with 4 types of output in an `output` directory:
 * **`true_map.png`** - the paths of all robots and all obstructions
 * **`statistics.txt`** - any simulation statistics gathered
 
-## New Robot Behavior
-To test a new exploration algorithm, create a robot class that inherits from `Robot`. `RandomRobot` gives a basic example. To make it selectable, logic in the `GameView._build_robot()` is needed as well.
+## New Robot and Map Behavior
+To test a new exploration algorithm, create a robot class that inherits from `Robot`. `RandomRobot` gives a basic example. To make it selectable, create a child of `GameView` and override `_is_user_bot` and `_build_user_bot` functions.
+
+For maps, inherit from `WorldMap` and override `_is_user_map` and `_build_user_map` in your `GameView` child class.
+
+## Development
+Code quality has been checked with `ruff check`

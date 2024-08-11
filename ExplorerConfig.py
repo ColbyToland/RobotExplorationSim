@@ -73,7 +73,7 @@ DefaultMapConfigs = {
         'custom_color': {'r': 255, 'g':255, 'b':255},
         'scale': 1,
         'ratio': 0, # percent of pixels that aren't the open_cell color to identify an obstruction
-        'draw_style': 'image'
+        'draw_style': 'obstacles'
     }
 }
 
@@ -144,12 +144,15 @@ class ExplorerConfig:
                 if key in override_config['simulation']['map_generator']:
                     hdd_config_file['simulation']['map_generator'][key] = deepcopy(defaultconfig)
             unrecognized_settings.setdefault('simulation', {})['map_generator'] = copy_override_dict(hdd_config_file['simulation']['map_generator'], override_config['simulation']['map_generator'])
+        else:
+            hdd_config_file['simulation']['map_generator']['cellular'] = deepcopy(DefaultMapConfigs['cellular'])
 
     def set_config(self, fname: Optional[str]):
         global hdd_config_file
         global unrecognized_settings
         if hdd_config_file is None:
             hdd_config_file = deepcopy(DefaultExplorerConfig)
+        override_config = None
         if fname is not None:
             with open(fname, 'r') as file:
                 override_config = yaml.safe_load(file)
@@ -162,11 +165,11 @@ class ExplorerConfig:
                 # Setup all settings except the robot groups and map settings
                 unrecognized_settings = copy_override_dict(hdd_config_file, override_config)
 
-                # Copy robot settings
-                self._set_robot_config(override_config)
+        # Copy robot settings
+        self._set_robot_config(override_config)
 
-                # Copy map generation settings
-                self._set_map_gen_config(override_config)
+        # Copy map generation settings
+        self._set_map_gen_config(override_config)
 
     def unrecognized_user_settings(self) -> dict:
         return unrecognized_settings
