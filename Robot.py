@@ -18,7 +18,6 @@ from ExplorerConfig import ExplorerConfig
 from LaserRangeFinder import LaserRangeFinder
 from RobotMessages import OccupancyGridMessage
 from OccupancyGrid import OccupancyGrid
-from OccupancyGridTypes import GridCellStatus
 from SimulationLoggers import RobotLogger, setup_robot_logger
 from types import FunctionType
 from typing import Optional
@@ -137,13 +136,6 @@ class Robot(arcade.Sprite):
         self.position = cur_pos
         return len(walls_hit) == 0
 
-    def _is_position_valid_in_occupancy_grid(self, pos: PtType) -> bool:
-        cell_status = self.map.get_cell(pos[0], pos[1]).status()
-        return cell_status == GridCellStatus.UNEXPLORED or cell_status == GridCellStatus.CLEAR
-
-    def _is_position_unknown_in_occupancy_grid(self, pos: PtType) -> bool:
-        return self.map.get_cell(pos[0], pos[1]).status() == GridCellStatus.UNEXPLORED
-
     def _get_position(self, test_func: FunctionType) -> fTuplePt2:
         """ Randomly select a valid position that meets the test condition """
         next_x = self.center_x
@@ -163,14 +155,6 @@ class Robot(arcade.Sprite):
     def _get_valid_position(self) -> fTuplePt2:
         """ Randomly select a valid position not in the walls """
         return self._get_position(self._is_position_valid)
-
-    def _get_valid_position_from_occupancy_grid(self) -> fTuplePt2:
-        """ Randomly select a valid position not in the walls """
-        return self._get_position(self._is_position_valid_in_occupancy_grid)
-
-    def _get_unknown_position_from_occupancy_grid(self) -> fTuplePt2:
-        """ Randomly select a valid position not in the walls """
-        return self._get_position(self._is_position_unknown_in_occupancy_grid)
 
     def _get_new_path(self):
         """ This bot doesn't move """
@@ -260,7 +244,8 @@ class Robot(arcade.Sprite):
             if self.replan_on_collision:
                 self.path = []
                 self._get_new_path()
-                self.dest_x, self.dest_y = self.path.pop(0)
+                if self.path:
+                    self.dest_x, self.dest_y = self.path.pop(0)
             self._check_and_fix_jammed_robot()
 
     async def update(self, wifi: WiFi.WiFi, physics_engine: Optional[arcade.PhysicsEngineSimple]=None):

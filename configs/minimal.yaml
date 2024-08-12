@@ -13,5 +13,5 @@ simulation:
     #   image_file: bw_map.png
     #   draw_style: magic
   robots:
-  - bot_count: 3
-    type: naive_random
+  - bot_count: 1
+    type: linear_sweeper

@@ -6,9 +6,10 @@ import arcade
 
 from ExplorerConfig import ExplorerConfig
 from OccupancyGrid import OccupancyGrid
+from OccupancyGridTypes import GridCellStatus
 import Robot
 from SimulationLoggers import RobotLogger
-from utils import LineSegmentCollisionDetector
+from utils import fTuplePt2, LineSegmentCollisionDetector, PtType
 import WiFi
 
 
@@ -28,12 +29,20 @@ class NaiveRandomRobot(Robot.Robot):
         """ Using Manhattan distance while not using diagonal movement """
         return Robot.manhattan_dist([self.center_x, self.center_y], [self.dest_x, self.dest_y])
 
+    def _is_unknown_position(self, pos: PtType) -> bool:
+        """ Check if a position is unknown in the occupancy grid """
+        return self.nav_map.get_cell(pos[0],pos[1]).status() == GridCellStatus.UNEXPLORED
+
+    def _get_unknown_position(self) -> fTuplePt2:
+        """ Randomly select an unknown position not in the known walls """
+        return self._get_position(self._is_unknown_position)
+
     def _get_new_path(self, update_obstructions: bool=True):
         """ Find a currently unknown location that is reachable based on the occupancy grid """
         known_walls = self.nav_map.get_known_walls(update=update_obstructions)
         known_barrier_list = arcade.AStarBarrierList(self, known_walls, self.grid_size, 0, self.max_x, 0, self.max_y)
         while self.path == [] or self.path is None:
-            dest = self._get_unknown_position_from_occupancy_grid()
+            dest = self._get_unknown_position()
             if arcade.has_line_of_sight(self.position, dest, known_walls):
                 self.path = arcade.astar_calculate_path(self.position, dest, known_barrier_list, diagonal_movement = False)
 

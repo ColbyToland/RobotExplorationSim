@@ -29,6 +29,7 @@ from SimulationLoggers import SimLogger
 from WiFi import WiFi
 
 # Robots
+import LinearSweepRobot
 import NaiveRandomRobot
 import PlayerCharacterRobot
 import Robot
@@ -104,6 +105,8 @@ class GameView(arcade.View):
                 ValueError(f"Only one player sprite allowed! Attempting to make {ExplorerConfig().bot_count(robot_group_id)}")
             self.player_sprite = PlayerCharacterRobot.PlayerCharacterRobot(robot_group_id, self.world_map.sprite_list)
             return self.player_sprite
+        elif robot_type == LinearSweepRobot.TYPE_NAME:
+            return LinearSweepRobot.LinearSweepRobot(robot_group_id, self.world_map.sprite_list)
         elif self._is_user_bot(robot_group_id):
             return self._build_user_bot(robot_group_id)
         raise ValueError(f"Robot type is not recognized: {robot_type}")

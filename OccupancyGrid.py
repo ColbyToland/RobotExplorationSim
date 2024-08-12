@@ -56,7 +56,7 @@ class OccupancyGrid:
         r = int(math.ceil(max(0, y-self.resolution_scale+1) / self.resolution_scale))
         return c, r
 
-    def _position(self, c: int, r: int) -> fTuplePt2:
+    def ind_to_position(self, c: int, r: int) -> fTuplePt2:
         """ Center of the indexed grid square """
         x = c*self.resolution_scale+self.resolution_scale/2
         y = r*self.resolution_scale+self.resolution_scale/2
@@ -117,7 +117,7 @@ class OccupancyGrid:
                 if cell_status == GridCellStatus.OBSTACLE:
                     if not isinstance(self._known_walls['map'][c][r], WallSprite):
                         wall = WallSprite()
-                        wall.center_x, wall.center_y = self._position(c, r)
+                        wall.center_x, wall.center_y = self.ind_to_position(c, r)
                         self._known_walls['map'][c][r] = wall
                         map_changed = True
                 elif isinstance(self._known_walls['map'][c][r], WallSprite):
@@ -153,7 +153,7 @@ class OccupancyGrid:
         error = []
         for r in range(self.rows):
             for c in range(self.columns):
-                x, y = self._position(c, r)
+                x, y = self.ind_to_position(c, r)
                 if self.map[c][r].status(obstacle_threshold) == GridCellStatus.UNEXPLORED:
                     unknown.append([x,y])
                 elif self.map[c][r].status(obstacle_threshold) == GridCellStatus.CLEAR:
